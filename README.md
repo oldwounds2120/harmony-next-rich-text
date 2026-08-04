@@ -19,19 +19,31 @@
 
 ## 二、目录结构
 
-```
-htmlrichtext/
-├── HtmlRichText.ets        # 主组件（渲染 + 图片预览 + 回调）
-├── RichTextConfig.ets      # 样式配置（所有可定制项）
-├── HtmlParser.ets          # HTML 解析器（纯逻辑，可单测）
-├── RichTextBuilder.ets     # 渲染树构建器：样式继承 / inline 分组（纯逻辑，可单测）
-├── RichTextModels.ets      # 数据模型（纯逻辑，可单测）
-├── SimpleCodeHighlighter.ets # 轻量代码高亮（纯逻辑）
-├── ImagePreviewDialog.ets  # 全屏图片预览弹窗
-└── Index.ets               # 统一导出
-```
+采用 **ohpm 三方库（HAR）标准结构**，可直接发布到 OpenHarmony 三方库中心仓：
 
-`RichTextDemoPage.ets`（demo 目录）是完整的示例页面。
+```
+harmony-next-rich-text/
+├── Index.ets                    # 包级统一入口（oh-package.json5 的 main）
+├── oh-package.json5             # ohpm 包元数据（包名/版本/作者/协议/关键词）
+├── README.md                    # 本文档
+├── CHANGELOG.md                 # 版本变更记录
+├── LICENSE                      # Apache-2.0 协议全文
+├── NOTICE                       # 版权归属声明（Apache 规范）
+├── .gitignore
+├── src/main/ets/htmlrichtext/   # 组件源码（HAR 标准源码目录）
+│   ├── HtmlRichText.ets         # 主组件（渲染 + 图片预览 + 回调）
+│   ├── RichTextConfig.ets       # 样式配置（所有可定制项）
+│   ├── HtmlParser.ets           # HTML 解析器（纯逻辑，可单测）
+│   ├── RichTextBuilder.ets      # 渲染树构建器：样式继承 / inline 分组（纯逻辑，可单测）
+│   ├── RichTextModels.ets       # 数据模型（纯逻辑，可单测）
+│   ├── SimpleCodeHighlighter.ets # 轻量代码高亮（纯逻辑）
+│   ├── ImagePreviewDialog.ets   # 全屏图片预览弹窗
+│   └── Index.ets                # 源码层统一导出
+├── demo/
+│   └── RichTextDemoPage.ets     # 完整示例页面
+└── test/
+    └── run.ts                   # 逻辑层单测（53 条断言）
+```
 
 ---
 
@@ -45,17 +57,29 @@ htmlrichtext/
 
 ## 四、快速开始
 
-### 1. 复制组件到工程
+### 方式 A：ohpm 安装（三方库发布后）
 
-把 `src/main/ets/htmlrichtext` 整个目录复制到你工程的 `entry/src/main/ets/htmlrichtext` 下。
+在工程根目录 `oh-package.json5` 的 `dependencies` 中加入：
 
-### 2. 创建示例页面
+```json5
+"dependencies": {
+  "htmlrichtext": "^1.0.0"
+}
+```
 
-把 `demo/RichTextDemoPage.ets` 复制到 `entry/src/main/ets/pages/`，并在
-`entry/src/main/resources/base/profile/main_pages.json` 注册：
+然后执行 `ohpm install`，页面中直接按包名导入：
 
-```json
-{ "src": "pages/RichTextDemoPage" }
+```ts
+import { HtmlRichText, RichTextConfig } from 'htmlrichtext';
+```
+
+### 方式 B：源码复制（推荐，即刻可用）
+
+把 `src/main/ets/htmlrichtext` 整个目录复制到你工程的
+`entry/src/main/ets/htmlrichtext` 下，导入路径指向源码入口：
+
+```ts
+import { HtmlRichText, RichTextConfig } from '../htmlrichtext/Index';
 ```
 
 ### 3. 在你的页面里使用
@@ -88,6 +112,8 @@ struct ArticlePage {
 }
 ```
 
+> 想先看效果？把 `demo/RichTextDemoPage.ets` 复制到 `entry/src/main/ets/pages/`，
+> 在 `main_pages.json` 注册 `{ "src": "pages/RichTextDemoPage" }` 编译即可。
 > 组件放在 `Scroll` 内使用即可，高度自适应内容。
 
 ---
@@ -178,7 +204,8 @@ A：改 `RichTextBuilder.ets` 的 `computeStyle` / `walkBlock` 增加规则，�
 解析器/构建器/高亮器为纯 TS 逻辑（无 ArkUI 依赖），可用 Node 直接验证：
 
 ```bash
-# 将 .ets 复制为 .ts 后运行（Node 22+）
+# 将 src/main/ets/htmlrichtext 下的 5 个逻辑层 .ets 复制为 .ts 后运行（Node 22+）
+# 需给相对 import 补 .ts 扩展名
 cd test
 node --experimental-transform-types run.ts
 ```

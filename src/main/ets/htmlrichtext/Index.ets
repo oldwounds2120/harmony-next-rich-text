@@ -1,6 +1,7 @@
 /**
- * Index.ets - 组件统一导出
- * 页面中：import { HtmlRichText, RichTextConfig } from '../richtext/Index';
+ * Index.ets - 组件源码统一导出
+ * 包外使用：import { HtmlRichText, RichTextConfig } from 'htmlrichtext';
+ *           （由仓库根目录 Index.ets 转发到这里）
  */
 export { HtmlRichText } from './HtmlRichText';
 export { RichTextConfig } from './RichTextConfig';
