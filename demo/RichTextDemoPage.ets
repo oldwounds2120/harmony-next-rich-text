@@ -2,13 +2,13 @@
  * RichTextDemoPage.ets - 使用示例（Demo）
  *
  * 使用方法：
- *  1. 把 RichTextComponent/src/main/ets/richtext 整个目录复制到你的工程
- *     entry/src/main/ets/richtext 下
+ *  1. 把 RichTextComponent/src/main/ets/htmlrichtext 整个目录复制到你的工程
+ *     entry/src/main/ets/htmlrichtext 下
  *  2. 复制本文件到 entry/src/main/ets/pages/RichTextDemoPage.ets
  *  3. 在 main_pages.json 中注册：{ "src": "pages/RichTextDemoPage" }
  *  4. 编译运行即可看到所有标签的渲染效果
  */
-import { HtmlRichText, RichTextConfig } from '../richtext/Index';
+import { HtmlRichText, RichTextConfig } from '../htmlrichtext/Index';
 import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 

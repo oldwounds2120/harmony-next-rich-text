@@ -20,7 +20,7 @@
 ## 二、目录结构
 
 ```
-richtext/
+htmlrichtext/
 ├── HtmlRichText.ets        # 主组件（渲染 + 图片预览 + 回调）
 ├── RichTextConfig.ets      # 样式配置（所有可定制项）
 ├── HtmlParser.ets          # HTML 解析器（纯逻辑，可单测）
@@ -39,7 +39,7 @@ richtext/
 
 ### 1. 复制组件到工程
 
-把 `src/main/ets/richtext` 整个目录复制到你工程的 `entry/src/main/ets/richtext` 下。
+把 `src/main/ets/htmlrichtext` 整个目录复制到你工程的 `entry/src/main/ets/htmlrichtext` 下。
 
 ### 2. 创建示例页面
 
@@ -53,7 +53,7 @@ richtext/
 ### 3. 在你的页面里使用
 
 ```ts
-import { HtmlRichText, RichTextConfig } from '../richtext/Index';
+import { HtmlRichText, RichTextConfig } from '../htmlrichtext/Index';
 
 @Entry
 @Component
