@@ -1,0 +1,20 @@
+# DevEco Studio / HarmonyOS 工程产物
+.hvigor/
+.hvigor_output/
+build/
+oh_modules/
+entry/build/
+local.properties
+
+# 编辑器
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# Node（仅测试脚本临时产物）
+node_modules/
