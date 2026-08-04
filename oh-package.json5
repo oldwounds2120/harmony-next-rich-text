@@ -1,6 +1,6 @@
 {
   "modelVersion": "6.1.1",
-  "description": "harmony-rich-text - 鸿蒙 NEXT 自研 HTML 富文本解析组件（HAR 工程）",
+  "description": "html-rich-text - 鸿蒙 NEXT 自研 HTML 富文本解析组件（HAR 工程）",
   "dependencies": {
   },
   "devDependencies": {

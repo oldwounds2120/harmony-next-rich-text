@@ -22,7 +22,7 @@
 采用 **ohpm 三方库（HAR）标准工程结构**，可直接构建并发布到 OpenHarmony 三方库中心仓：
 
 ```
-harmony-rich-text/
+html-rich-text/
 ├── build-profile.json5          # 工程级构建配置（hvigor 使用，使用者无需关心）
 ├── hvigorfile.ts                # 工程级构建脚本（hvigor 使用）
 ├── hvigor/                      # hvigor 构建配置
