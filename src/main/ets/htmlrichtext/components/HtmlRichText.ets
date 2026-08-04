@@ -22,10 +22,10 @@
 import { LengthMetrics } from '@kit.ArkUI';
 import {
   RenderBlock, InlineGroup, RichSpan, TableCell, AlignStyle, DecorationStyle, FontStyleType
-} from './RichTextModels';
-import { RichTextConfig } from './RichTextConfig';
-import { HtmlParser } from './HtmlParser';
-import { RichTextBuilder } from './RichTextBuilder';
+} from '../core/RichTextModels';
+import { RichTextConfig } from '../core/RichTextConfig';
+import { HtmlParser } from '../core/HtmlParser';
+import { RichTextBuilder } from '../core/RichTextBuilder';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 
 function toArkAlign(a: AlignStyle): TextAlign {

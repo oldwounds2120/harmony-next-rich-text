@@ -31,14 +31,16 @@ harmony-rich-text/
 ├── NOTICE                       # 版权归属声明（Apache 规范）
 ├── .gitignore
 ├── src/main/ets/htmlrichtext/   # 组件源码（HAR 标准源码目录）
-│   ├── HtmlRichText.ets         # 主组件（渲染 + 图片预览 + 回调）
-│   ├── RichTextConfig.ets       # 样式配置（所有可定制项）
-│   ├── HtmlParser.ets           # HTML 解析器（纯逻辑，可单测）
-│   ├── RichTextBuilder.ets      # 渲染树构建器：样式继承 / inline 分组（纯逻辑，可单测）
-│   ├── RichTextModels.ets       # 数据模型（纯逻辑，可单测）
-│   ├── SimpleCodeHighlighter.ets # 轻量代码高亮（纯逻辑）
-│   ├── ImagePreviewDialog.ets   # 全屏图片预览弹窗
-│   └── Index.ets                # 源码层统一导出
+│   ├── Index.ets                # 源码层统一导出
+│   ├── components/              # UI 组件层
+│   │   ├── HtmlRichText.ets     # 主组件（渲染 + 图片预览 + 回调）
+│   │   └── ImagePreviewDialog.ets # 全屏图片预览弹窗
+│   └── core/                    # 纯逻辑层（无 ArkUI 依赖，可单测）
+│       ├── HtmlParser.ets       # HTML 解析器
+│       ├── RichTextBuilder.ets  # 渲染树构建器：样式继承 / inline 分组
+│       ├── RichTextModels.ets   # 数据模型
+│       ├── RichTextConfig.ets   # 样式配置（所有可定制项）
+│       └── SimpleCodeHighlighter.ets # 轻量代码高亮
 ├── demo/
 │   └── RichTextDemoPage.ets     # 完整示例页面
 └── test/
@@ -204,7 +206,7 @@ A：改 `RichTextBuilder.ets` 的 `computeStyle` / `walkBlock` 增加规则，�
 解析器/构建器/高亮器为纯 TS 逻辑（无 ArkUI 依赖），可用 Node 直接验证：
 
 ```bash
-# 将 src/main/ets/htmlrichtext 下的 5 个逻辑层 .ets 复制为 .ts 后运行（Node 22+）
+# 将 src/main/ets/htmlrichtext/core 下的 5 个逻辑层 .ets 复制为 .ts 后运行（Node 22+）
 # 需给相对 import 补 .ts 扩展名
 cd test
 node --experimental-transform-types run.ts
