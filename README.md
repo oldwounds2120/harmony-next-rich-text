@@ -22,7 +22,7 @@
 采用 **ohpm 三方库（HAR）标准结构**，可直接发布到 OpenHarmony 三方库中心仓：
 
 ```
-harmony-next-rich-text/
+harmony-rich-text/
 ├── Index.ets                    # 包级统一入口（oh-package.json5 的 main）
 ├── oh-package.json5             # ohpm 包元数据（包名/版本/作者/协议/关键词）
 ├── README.md                    # 本文档

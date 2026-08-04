@@ -19,8 +19,8 @@
     "html-parser",
     "rich-text"
   ],
-  "repository": "https://github.com/oldwounds2120/harmony-next-rich-text",
-  "homepage": "https://github.com/oldwounds2120/harmony-next-rich-text",
+  "repository": "https://github.com/oldwounds2120/harmony-rich-text",
+  "homepage": "https://github.com/oldwounds2120/harmony-rich-text",
   "dependencies": {},
   "devDependencies": {}
 }
