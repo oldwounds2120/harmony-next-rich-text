@@ -1,4 +1,4 @@
-# 鸿蒙 NEXT 自定义富文本解析组件（RichText）
+# 鸿蒙 NEXT 自定义富文本解析组件（HtmlRichText）
 
 > [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) ![Language](https://img.shields.io/badge/Language-ArkTS-orange.svg) ![Platform](https://img.shields.io/badge/Platform-HarmonyOS%20NEXT-green.svg)
 
