@@ -35,7 +35,15 @@ htmlrichtext/
 
 ---
 
-## 三、快速开始
+## 三、环境要求
+
+- 仅支持 **HarmonyOS NEXT（API 12+）**，建议 `compileSdkVersion >= 12`。
+- 组件使用了 `Span.baselineOffset(LengthMetrics)`（API 12 起参数类型为 `LengthMetrics`）；
+  若你的工程需要兼容 **API 11**，请将 `HtmlRichText.ets` 中
+  `.baselineOffset(LengthMetrics.vp(sp.baselineOffset ?? 0))` 一行改回
+  `.baselineOffset(sp.baselineOffset ?? 0)` 即可（ArkTS 无条件编译，两种写法按工程 SDK 二选一）。
+
+## 四、快速开始
 
 ### 1. 复制组件到工程
 
@@ -84,7 +92,7 @@ struct ArticlePage {
 
 ---
 
-## 四、API
+## 五、API
 
 ### HtmlRichText 参数
 
@@ -117,7 +125,7 @@ config.imageRadius = 8;              // 图片圆角
 
 ---
 
-## 五、支持的标签
+## 六、支持的标签
 
 | 类别 | 标签 |
 | ---- | ---- |
@@ -140,7 +148,7 @@ config.imageRadius = 8;              // 图片圆角
 
 ---
 
-## 六、常见问题
+## 七、常见问题
 
 **Q：代码高亮效果不满意？**
 A：`config.enableCodeHighlight = false` 关闭；或修改 `SimpleCodeHighlighter.ets` 中的配色。
@@ -165,7 +173,7 @@ A：改 `RichTextBuilder.ets` 的 `computeStyle` / `walkBlock` 增加规则，�
 
 ---
 
-## 七、逻辑层单测（可选）
+## 八、逻辑层单测（可选）
 
 解析器/构建器/高亮器为纯 TS 逻辑（无 ArkUI 依赖），可用 Node 直接验证：
 
@@ -177,7 +185,7 @@ node --experimental-transform-types run.ts
 
 ---
 
-## 八、参与贡献
+## 九、参与贡献
 
 欢迎 PR / Issue！无论是新增标签支持、修复 bug、优化渲染性能，还是补充文档：
 
@@ -185,7 +193,7 @@ node --experimental-transform-types run.ts
 2. 修改代码，`test/run.ts` 有覆盖解析器/构建器的单测，请保证新改动不破坏现有用例
 3. 提交 PR，说明改动内容与动机
 
-## 九、开源协议
+## 十、开源协议
 
 本项目基于 [Apache License 2.0](LICENSE) 开源（版权声明见 [NOTICE](NOTICE)）。
 你可以自由使用、修改、商用（含闭源项目）；分发或修改时需保留协议与版权声明，
