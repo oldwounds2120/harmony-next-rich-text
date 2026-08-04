@@ -1,9 +1,9 @@
 /**
- * RichText.ets
+ * HtmlRichText.ets
  * 鸿蒙 NEXT 自定义富文本解析组件（资讯/文章详情页场景）
  *
  * 用法：
- *   RichText({
+ *   HtmlRichText({
  *     html: this.htmlContent,
  *     config: new RichTextConfig(),
  *     baseUrl: 'https://cdn.example.com',

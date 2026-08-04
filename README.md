@@ -21,7 +21,7 @@
 
 ```
 richtext/
-├── RichText.ets            # 主组件（渲染 + 图片预览 + 回调）
+├── HtmlRichText.ets        # 主组件（渲染 + 图片预览 + 回调）
 ├── RichTextConfig.ets      # 样式配置（所有可定制项）
 ├── HtmlParser.ets          # HTML 解析器（纯逻辑，可单测）
 ├── RichTextBuilder.ets     # 渲染树构建器：样式继承 / inline 分组（纯逻辑，可单测）
@@ -161,7 +161,7 @@ A：解析和渲染模型构建只在 `html` 变化时执行一次（缓存为�
 
 **Q：想加自定义标签或交互？**
 A：改 `RichTextBuilder.ets` 的 `computeStyle` / `walkBlock` 增加规则，再在
-`RichText.ets` 的 `BlockBuilder` 中增加对应渲染分支即可。
+`HtmlRichText.ets` 的 `BlockBuilder` 中增加对应渲染分支即可。
 
 ---
 
