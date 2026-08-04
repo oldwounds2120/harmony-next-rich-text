@@ -161,14 +161,17 @@ export class SimpleCodeHighlighter {
     return spans;
   }
 
+  /** 是否十进制数字字符 */
   private static isDigit(c: string): boolean {
     return c >= '0' && c <= '9';
   }
 
+  /** 是否标识符起始字符（字母 / 下划线 / $） */
   private static isWordStart(c: string): boolean {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || c === '$';
   }
 
+  /** 是否标识符成员字符（起始字符 + 数字） */
   private static isWordChar(c: string): boolean {
     return SimpleCodeHighlighter.isWordStart(c) || SimpleCodeHighlighter.isDigit(c);
   }

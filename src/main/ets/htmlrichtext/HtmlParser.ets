@@ -137,6 +137,10 @@ export class HtmlParser {
     }
   }
 
+  /**
+   * 解析标签属性字符串（name="v" / name='v' / name=v / 裸属性 name）。
+   * 属性名统一小写，值支持双引号/单引号/无引号三种写法，键存入 Map 供后续取用。
+   */
   private parseAttrs(attrStr: string): Map<string, string> {
     const attrs: Map<string, string> = new Map<string, string>();
     const re: RegExp = /([a-zA-Z_:][a-zA-Z0-9_:.-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
@@ -148,6 +152,10 @@ export class HtmlParser {
     return attrs;
   }
 
+  /**
+   * 追加文本节点：实体解码后，若父节点最后一个子节点是 TEXT 则直接拼接
+   * （避免 <p>a<b>x</b>c</p> 的 "a" "c" 产生零散节点），否则新建 TEXT 节点。
+   */
   private appendText(parent: RichNode, raw: string): void {
     if (raw.length === 0) {
       return;
@@ -167,7 +175,11 @@ export class HtmlParser {
     parent.children.push(node);
   }
 
-  /** HTML 实体解码 */
+  /**
+   * HTML 实体解码：支持
+   *  - 数字实体 &#39; / &#x27;（十进制 / 十六进制，转 Unicode 码点）
+   *  - 命名实体 &amp; &lt; &gt; &nbsp; 等（查 ENTITIES 表，未收录的原样保留）
+   */
   static decodeEntities(input: string): string {
     return input.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (match: string, entity: string): string => {
       if (entity.startsWith('#x') || entity.startsWith('#X')) {

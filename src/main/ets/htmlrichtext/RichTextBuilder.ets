@@ -26,6 +26,11 @@ const NAMED_COLORS: Map<string, string> = new Map<string, string>([
   ['indigo', '#4b0082'], ['violet', '#ee82ee'], ['cyan', '#00ffff'], ['magenta', '#ff00ff']
 ]);
 
+/**
+ * 解析 CSS 颜色字符串为统一格式（组件层再映射为 ResourceColor）。
+ * 支持：#rgb / #rrggbb / #rrggbbaa、rgb()、rgba()、常用英文色名（见 NAMED_COLORS）。
+ * 解析失败返回 undefined（调用方忽略该样式，不抛错）。
+ */
 function parseColor(v: string): string | undefined {
   const s: string = v.trim().toLowerCase();
   if (s.length === 0) {
@@ -33,7 +38,8 @@ function parseColor(v: string): string | undefined {
   }
   if (s.startsWith('#')) {
     if (/^#[0-9a-f]{3}$/.test(s)) {
-      return '#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+      // 3 位简写 #abc → 展开为 #aabbcc
+      return '#' + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2) + s.charAt(3) + s.charAt(3);
     }
     if (/^#[0-9a-f]{6}$/.test(s) || /^#[0-9a-f]{8}$/.test(s)) {
       return s;
@@ -57,6 +63,7 @@ function parseColor(v: string): string | undefined {
   return NAMED_COLORS.get(s);
 }
 
+/** RGB(A) → #rrggbb 或 #rrggbbaa（alpha 为 255 时省略 alpha 段） */
 function toHex(r: number, g: number, b: number, a?: number): string {
   const h = (n: number): string => n.toString(16).padStart(2, '0');
   if (a !== undefined && a < 255) {
@@ -65,6 +72,7 @@ function toHex(r: number, g: number, b: number, a?: number): string {
   return '#' + h(r) + h(g) + h(b);
 }
 
+/** 解析 CSS font-weight（bold=700 / bolder=800 / lighter=300 / normal=400 / 100-900 数字） */
 function parseFontWeight(v: string): number | undefined {
   const s: string = v.trim().toLowerCase();
   if (s === 'bold') {
@@ -86,6 +94,7 @@ function parseFontWeight(v: string): number | undefined {
   return undefined;
 }
 
+/** 解析 CSS text-align 为内部 AlignStyle 枚举 */
 function parseAlign(v: string): AlignStyle {
   const s: string = v.trim().toLowerCase();
   if (s === 'center') {
@@ -100,6 +109,12 @@ function parseAlign(v: string): AlignStyle {
   return AlignStyle.START;
 }
 
+/**
+ * 解析 CSS line-height：返回"倍数"（组件层乘以字号得到 vp 值）。
+ *  - 无单位数字（1.5）→ 直接作为倍数
+ *  - 带 px（20px）→ 除以正文字号换算成倍数
+ *  - normal / 空 → undefined（沿用父级行高）
+ */
 function parseLineHeight(v: string, bodyFontSize: number): number | undefined {
   const s: string = v.trim().toLowerCase();
   if (s === 'normal' || s.length === 0) {
@@ -209,6 +224,7 @@ export class RichTextBuilder {
     }
   }
 
+  /** 单个行内节点（或裸文本）直接生成一个文本块：用于块级位置的 span/strong/裸文本等 */
   private pushTextBlock(out: RenderBlock[], node: RichNode, style: RichStyle): void {
     const groups: InlineGroup[] = this.flattenInline([node], style);
     if (groups.length === 0) {
@@ -255,6 +271,7 @@ export class RichTextBuilder {
     flush();
   }
 
+  /** 判断是否为块级标签（用于 processContainer 分段；img/br 等行内元素不在此列） */
   private isBlockTag(tag: string): boolean {
     return tag === 'p' || tag === 'div' || tag === 'section' || tag === 'article' || tag === 'main'
       || tag === 'header' || tag === 'footer' || tag === 'aside' || tag === 'nav'
@@ -263,6 +280,7 @@ export class RichTextBuilder {
       || tag === 'li' || tag === 'blockquote' || tag === 'pre' || tag === 'table' || tag === 'hr';
   }
 
+  /** 标题块：摊平行内内容生成文本块，标记 kind=heading 与级别（字号/字重由 computeStyle 已设置） */
   private pushHeading(out: RenderBlock[], node: RichNode, style: RichStyle, level: number): void {
     const groups: InlineGroup[] = this.flattenInline(node.children, style);
     if (groups.length === 0) {
@@ -274,6 +292,7 @@ export class RichTextBuilder {
     out.push(block);
   }
 
+  /** 引用块：内部内容递归走一遍 walkBlock（通常是多个 p），打包成带左右边距的 quote 块 */
   private pushQuote(out: RenderBlock[], node: RichNode, style: RichStyle): void {
     const inner: RenderBlock[] = [];
     this.walkBlock(inner, node, style);
@@ -285,6 +304,7 @@ export class RichTextBuilder {
     out.push(block);
   }
 
+  /** 代码块：拼接 pre 内全部文本（保留换行）、去掉首尾多余空行、识别语言并做逐行高亮 */
   private pushCode(out: RenderBlock[], node: RichNode, style: RichStyle): void {
     let text: string = this.collectText(node);
     text = text.replace(/^\n+/, '').replace(/\n+$/, '');
@@ -297,6 +317,7 @@ export class RichTextBuilder {
     out.push(block);
   }
 
+  /** 分割线块：1px 横线 */
   private pushHr(out: RenderBlock[], style: RichStyle): void {
     const block: RenderBlock = new RenderBlock();
     block.kind = 'hr';
@@ -305,6 +326,7 @@ export class RichTextBuilder {
     out.push(block);
   }
 
+  /** 块级图片：解析 src（可拼接 baseUrl）、width/height 属性，并分配全文图片序号（供预览索引） */
   private pushImage(out: RenderBlock[], node: RichNode, style: RichStyle): void {
     const src: string = this.resolveUrl(node.attrs.get('src') ?? '');
     if (src.length === 0) {
@@ -323,6 +345,7 @@ export class RichTextBuilder {
     out.push(block);
   }
 
+  /** 表格：解析 tr → td/th（单元格内容摊平、colspan/rowspan/align），统计最大列数供 Grid 模板 */
   private pushTable(out: RenderBlock[], node: RichNode, style: RichStyle): void {
     const block: RenderBlock = new RenderBlock();
     block.kind = 'table';
@@ -519,6 +542,7 @@ export class RichTextBuilder {
     return sp;
   }
 
+  /** 生成行内图片组：解析 src/alt/width/height/圆角，组件层渲染为可点击预览的 Image */
   private makeImageGroup(node: RichNode, style: RichStyle): InlineGroup {
     const g: InlineGroup = new InlineGroup();
     g.kind = 'image';
@@ -555,6 +579,7 @@ export class RichTextBuilder {
     return g;
   }
 
+  /** 把 InlineGroup 组装成文本渲染块：行高按"倍数 × 字号"换算成 vp，边距/对齐取自样式 */
   private makeTextBlock(groups: InlineGroup[], style: RichStyle): RenderBlock {
     const block: RenderBlock = new RenderBlock();
     block.kind = 'text';
@@ -657,6 +682,13 @@ export class RichTextBuilder {
     return s;
   }
 
+  /**
+   * 解析内联 style 属性（如 style="color:#f00;font-size:18px"）并覆盖到 RichStyle。
+   * 逐条按 "key: value" 解析，支持 color/background/font-size/font-weight/
+   * font-style/text-decoration/line-height/letter-spacing/text-align/
+   * margin/padding/border-radius/vertical-align/width/height；
+   * 解析失败或未知属性直接跳过（不抛错）。
+   */
   private applyInlineStyle(styleStr: string, s: RichStyle): void {
     if (styleStr.length === 0) {
       return;
@@ -787,6 +819,7 @@ export class RichTextBuilder {
 
   // ================= 工具 =================
 
+  /** 递归收集节点子树内的全部文本（用于 pre 代码内容拼接，保留换行与空格） */
   private collectText(node: RichNode): string {
     let result: string = '';
     for (const c of node.children) {
@@ -799,6 +832,7 @@ export class RichTextBuilder {
     return result;
   }
 
+  /** 识别代码语言：优先 <pre class="language-xxx">，其次 data-language，最后看子 <code> 的 class */
   private extractLang(node: RichNode): string {
     const cls: string = node.attrs.get('class') ?? '';
     const m: RegExpMatchArray | null = cls.match(/language-([a-zA-Z0-9_+-]+)/);
@@ -821,6 +855,12 @@ export class RichTextBuilder {
     return '';
   }
 
+  /**
+   * 代码文本 → 逐行高亮 token 列表（二维数组：行 → 带颜色的 RichSpan[]）。
+   * 在构建阶段一次性算好，渲染时零计算。
+   * 空格/tab 统一替换为不换行空格 \u00A0：保证每行不自动换行，
+   * 超长行由组件层 Scroll 横向滚动（否则 Text 会断行破坏缩进对齐）。
+   */
   private buildCodeTokens(text: string): RichSpan[][] {
     const lines: string[] = text.split('\n');
     const result: RichSpan[][] = [];
@@ -844,6 +884,7 @@ export class RichTextBuilder {
     return result;
   }
 
+  /** 无高亮模式下的纯文本 span（颜色留空，组件层回退到代码块默认色） */
   private makePlainSpan(text: string): RichSpan {
     const sp: RichSpan = new RichSpan();
     sp.text = text;
@@ -851,6 +892,11 @@ export class RichTextBuilder {
     return sp;
   }
 
+  /**
+   * 解析长度字符串为 vp 数值：
+   *  - 数字 / px / vp / rem → 原值；em → 字号倍数；pt → ×1.33
+   *  - % / auto / 空 → undefined（交给组件层用 100% 或自适应处理）
+   */
   private parseLen(v: string | undefined): number | undefined {
     if (v === undefined || v === null) {
       return undefined;
@@ -875,6 +921,7 @@ export class RichTextBuilder {
     return num; // px / vp / 纯数字
   }
 
+  /** 图片/链接地址处理：绝对地址（http/https/data/file）与根路径 /xxx 原样返回，否则拼接 baseUrl 前缀 */
   private resolveUrl(src: string): string {
     if (src.startsWith('http://') || src.startsWith('https://')
       || src.startsWith('data:') || src.startsWith('file:')
