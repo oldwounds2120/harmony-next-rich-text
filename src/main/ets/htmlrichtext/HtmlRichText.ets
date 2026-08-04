@@ -19,6 +19,7 @@
  *  - 代码块支持横向滚动与轻量语法高亮
  *  - 所有样式集中在 RichTextConfig，可整体定制
  */
+import { LengthMetrics } from '@kit.ArkUI';
 import {
   RenderBlock, InlineGroup, RichSpan, TableCell, AlignStyle, DecorationStyle, FontStyleType
 } from './RichTextModels';
@@ -270,7 +271,7 @@ export struct HtmlRichText {
         .fontColor(sp.color ?? this.config.bodyColor)
         .backgroundColor(sp.backgroundColor ?? '#00000000')
         .fontFamily(sp.fontFamily ?? this.config.bodyFontFamily)
-        .baselineOffset(sp.baselineOffset ?? 0)
+        .baselineOffset(LengthMetrics.vp(sp.baselineOffset ?? 0))
         .letterSpacing(sp.letterSpacing ?? 0)
     }, (sp: RichSpan, index: number) => index.toString())
   }
