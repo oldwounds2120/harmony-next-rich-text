@@ -105,6 +105,11 @@ export struct HtmlRichText {
     this.rebuild();
   }
 
+  /**
+   * 重新构建渲染模型：HTML → 解析树 → 渲染块（仅在此处做解析与构建，
+   * build() 里零计算，纯渲染；html 变化时由 @Watch 触发）。
+   * 同时收集全文图片地址列表（按出现顺序），供预览弹窗 Swiper 使用。
+   */
   private rebuild(): void {
     const root = HtmlParser.parse(this.html);
     const builder = new RichTextBuilder(root, this.config, this.baseUrl);
@@ -114,6 +119,7 @@ export struct HtmlRichText {
     this.previewIndex = 0;
   }
 
+  /** 递归收集所有图片（含块级 img 与行内 img group），保持出现顺序 */
   private collectImages(blocks: RenderBlock[]): void {
     for (const b of blocks) {
       if (b.kind === 'image' && b.imageSrc.length > 0) {
@@ -128,6 +134,7 @@ export struct HtmlRichText {
     }
   }
 
+  /** 打开图片预览：总是先回调 onImageClick；预览开关开启时弹出全屏 Swiper */
   private openImage(index: number, src: string): void {
     this.onImageClick?.(index, src);
     if (this.config.enableImagePreview && this.images.length > 0) {
@@ -220,6 +227,14 @@ export struct HtmlRichText {
 
   // ---------- 文本段 ----------
 
+  /**
+   * 文本段渲染：
+   *  - 纯文本（单一 text 组）→ 单个 Text，支持 text-align 居中/右对齐等；
+   *  - 混排（文本 + 图片 + 链接）→ Flex wrap 布局：
+   *      每个文本组是一个 Text（多 Span 连片），图片是 Image，链接是带 onClick 的 Text；
+   *      Flex 自动换行，文本组内部保持自然断行，图片/链接作为独立可交互子项。
+   *  - 链接的点击由组件层在此处绑定（Span 不支持点击事件，所以链接单独成组）。
+   */
   @Builder
   private TextBlock(block: RenderBlock) {
     if (block.groups.length === 1 && block.groups[0].kind === 'text') {
@@ -260,6 +275,13 @@ export struct HtmlRichText {
     }
   }
 
+  /**
+   * 行内 Span 渲染：一个 Text 内的多个 Span 共享同一基线，实现
+   * "同一行内多种样式"（加粗/斜体/颜色/上下标混排）。
+   * 每个属性都给兜底值，避免某个 Span 缺字段时样式串到别的 Span。
+   * 注意：baselineOffset 在 API 12+ 参数类型是 LengthMetrics，需用
+   * LengthMetrics.vp() 包装；API 11 工程请改回直接传 number（见 README 环境要求）。
+   */
   @Builder
   private SpanList(spans: RichSpan[]) {
     ForEach(spans, (sp: RichSpan) => {
@@ -287,6 +309,13 @@ export struct HtmlRichText {
     .alignItems(HorizontalAlign.Center)
   }
 
+  /**
+   * 行内图片渲染：
+   *  - 未指定高度时只设宽度（默认 100%），Image 会按原始比例等比缩放；
+   *  - 指定了高度则按固定尺寸渲染（用 Cover 裁剪避免变形）；
+   *  - backgroundColor 作为加载中的占位底色；onError 抛出加载失败回调；
+   *  - onClick 触发全屏预览（config.enableImagePreview 可关闭，仅留回调）。
+   */
   @Builder
   private InlineImage(g: InlineGroup) {
     if (g.height !== undefined) {
@@ -327,6 +356,15 @@ export struct HtmlRichText {
 
   // ---------- 代码块 ----------
 
+  /**
+   * 代码块渲染要点：
+   *  - 按"行"拆成多个独立 Text（每行一个），长行不会被 Text 自动换行，
+   *    而是撑宽内容 → 外层 Scroll 横向滚动（scrollable(Horizontal)）；
+   *  - 空格已在构建阶段替换为不换行空格 \u00A0，保证缩进/对齐精确显示；
+   *  - 空行用 \u00A0 占位，避免行高塌陷；
+   *  - codeLinesTokens 是构建阶段算好的高亮结果（RichSpan[]，含颜色），
+   *    渲染时零计算。
+   */
   @Builder
   private CodeBlock(block: RenderBlock) {
     Column() {

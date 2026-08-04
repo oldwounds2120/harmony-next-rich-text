@@ -47,6 +47,23 @@ export class HtmlParser {
     return root;
   }
 
+  /**
+   * 递归下降解析：解析 parent 的子节点，直到遇到 </untilTag> 或字符串结束。
+   *
+   * 逐字符扫描（this.pos 为当前游标），按 `<` 切分文本与标签：
+   *  - 文本段（含实体解码）→ appendText 追加为 TEXT 节点（相邻文本自动合并）
+   *  - <!-- --> 注释 → 整段跳过
+   *  - <!DOCTYPE / <? ...> → 整段跳过
+   *  - </tag> 闭合标签 → 若与 untilTag 匹配则 return（结束本次递归），
+   *    否则视为多余闭合标签直接忽略（容错）
+   *  - <tag> 开始标签 → 解析属性；命中 SKIP_TAGS（script/style 等）则跳到对应
+   *    闭合标签处整体跳过；void 元素（br/img/hr 等）或自闭合 <tag/> 不入栈；
+   *    其余标签 push 后递归解析其子节点（未闭合时递归到字符串末尾自动补全）
+   *  - 非法的 `<`（如文本里的 <3）按普通字符处理
+   *
+   * 递归栈天然保证嵌套正确；错误写法（漏闭合/多闭合）通过"自动补全/忽略"容错，
+   * 不会抛异常也不会中断解析。
+   */
   private parseChildren(parent: RichNode, untilTag: string | null): void {
     const len: number = this.html.length;
     while (this.pos < len) {

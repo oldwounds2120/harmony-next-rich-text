@@ -153,6 +153,22 @@ export class RichTextBuilder {
 
   // ================= 块级遍历 =================
 
+  /**
+   * 块级节点遍历（渲染树构建的核心分发逻辑）。
+   *
+   * 对每个子节点按标签类别分发：
+   *  - 文本节点         → 直接生成文本块（裸文本按段落处理）
+   *  - p/div/section 等 → processContainer：内部行内内容合并成段、块级子标签分段递归
+   *  - h1~h6           → 标题块（flattenInline 摊平行内内容）
+   *  - blockquote      → 引用块（内部再走一遍 walkBlock）
+   *  - ul/ol           → 列表（walkList 维护嵌套层级与序号）
+   *  - pre             → 代码块（保留空白 + 语法高亮）
+   *  - table           → 表格（解析 tr/td/th 与 colspan/rowspan）
+   *  - hr/img          → 分割线 / 图片块
+   *  - 其他 inline 标签 → 按段落文本处理（如顶层裸 <span>xx</span>）
+   *
+   * 样式通过 parentStyle 参数沿树向下继承（见 computeStyle）。
+   */
   private walkBlock(out: RenderBlock[], node: RichNode, parentStyle: RichStyle): void {
     for (const child of node.children) {
       if (child.type === NodeType.TEXT) {
@@ -206,6 +222,12 @@ export class RichTextBuilder {
    * 连续的行内内容合并为一个文本块（保证换行连续），块级子标签分段递归
    */
   private processContainer(out: RenderBlock[], node: RichNode, style: RichStyle): void {
+    // 为什么用"暂存 + 刷出"模式？
+    // HTML 中 <p>一段<b>加粗</b>文字</p> 的"一段""加粗""文字"是三个节点，
+    // 若各自成块会导致每段独立换行、英文单词被拦腰截断。
+    // 所以先把连续的行内节点累积到 pending，一次性 flattenInline 成单个
+    // Text（多 Span），保证整段文字的自然换行；遇到块级子标签（如 <p> 里嵌 <div>）
+    // 则先刷出已累积的文本段，再递归处理该块。
     const pending: RichNode[] = [];
     const flush = (): void => {
       if (pending.length > 0) {
@@ -340,6 +362,12 @@ export class RichTextBuilder {
 
   // ================= 列表 =================
 
+  /**
+   * 遍历 ul/ol：维护"列表类型栈"与"序号栈"，支持任意层级嵌套。
+   *  - listStack    记录每层的类型（disc 圆点 / decimal 数字），决定 marker 样式
+   *  - listCounters 记录每层有序列表的当前序号（从 0 起，li 时自增）
+   * 返回该列表生成的所有 RenderBlock（顶层 li 会 push 到 out）
+   */
   private walkList(node: RichNode, parentStyle: RichStyle): RenderBlock[] {
     const result: RenderBlock[] = [];
     const kind: string = node.tag === 'ol' ? 'decimal' : 'disc';
@@ -359,6 +387,13 @@ export class RichTextBuilder {
     return result;
   }
 
+  /**
+   * 处理单个 li：
+   *  - 计算 marker（有序：递增序号；无序：按层级 1/2/3+ 用 •/○/▪）
+   *  - 内容拆分为两部分：普通行内内容 → 合并成一个文本块（children[0]）；
+   *    嵌套的 ul/ol → 递归 walkList，生成子列表块挂到 children
+   *  - listLevel / paddingLeft 用于逐级缩进
+   */
   private walkListItem(out: RenderBlock[], node: RichNode, parentStyle: RichStyle,
     kind: string, level: number, isFirst: boolean): void {
     if (kind === 'decimal') {
@@ -406,6 +441,19 @@ export class RichTextBuilder {
 
   // ================= 行内摊平 =================
 
+  /**
+   * 行内内容"摊平"（本项目最关键的布局决策）。
+   *
+   * ArkUI 中行内样式只能用 Span 表达（Span 不支持放图片、不支持点击），
+   * 而 Text 才是换行连续的载体。因此：
+   *  - 连续的文本/样式节点（文字、strong、em、code...）→ 累积成 RichSpan 列表，
+   *    最终合并进一个 Text（多个 Span），保证整段文字自然换行、单词不被截断；
+   *  - img  → 单独成组（InlineGroup.kind='image'），组件层渲染为独立 Image，
+   *    可加载/点击预览，与文本用 Flex wrap 混排；
+   *  - a    → 单独成组（kind='link'），组件层渲染为带 onClick 的 Text，
+   *    实现链接可点击；
+   *  - br   → 直接插入 '\n' 换行符（Text 原生支持），不额外成组。
+   */
   private flattenInline(nodes: RichNode[], parentStyle: RichStyle): InlineGroup[] {
     const groups: InlineGroup[] = [];
     let spans: RichSpan[] = [];
@@ -446,6 +494,11 @@ export class RichTextBuilder {
     return groups;
   }
 
+  /**
+   * 把 RichStyle 转成最终渲染用的 RichSpan。
+   * baselineOffset 处理：上标 sup → 向上偏移 +0.5em；下标 sub → 向下偏移 -0.25em，
+   * 组件层通过 LengthMetrics.vp() 包装（API 12+ 参数类型）。
+   */
   private makeSpan(text: string, style: RichStyle): RichSpan {
     const sp: RichSpan = new RichSpan();
     sp.text = text;
@@ -477,6 +530,10 @@ export class RichTextBuilder {
     return g;
   }
 
+  /**
+   * 生成链接组：用"链接专属样式"递归摊平 a 内部内容，
+   * 强制链接色 + 下划线（可配置），组件层整组渲染为可点击 Text。
+   */
   private makeLinkGroup(node: RichNode, style: RichStyle): InlineGroup {
     const linkStyle: RichStyle = new RichStyle();
     linkStyle.color = style.color ?? this.config.linkColor;
@@ -513,6 +570,15 @@ export class RichTextBuilder {
 
   // ================= 样式计算 =================
 
+  /**
+   * 计算节点样式（三层叠加，模拟浏览器 CSS 级联）：
+   *  1. 继承父级样式（颜色/字号/行高/对齐等沿 DOM 树传递）
+   *  2. 应用标签默认样式（h1~h6 字号、strong 加粗、em 斜体、a 链接色、
+   *     code 等宽+底色、sub/sup 上下标、blockquote 引用色、p 段间距等）
+   *  3. 解析内联 style 属性并覆盖（优先级最高，见 applyInlineStyle）
+   * 注意：strong 取 Math.max(600, 父级字重) 保证嵌套加粗不回退；
+   *       code 字号在父字号基础上 -1，sub/sup 额外 -2 并标记 verticalAlign。
+   */
   private computeStyle(node: RichNode, parent: RichStyle): RichStyle {
     const s: RichStyle = new RichStyle();
     s.color = parent.color;
