@@ -5,6 +5,7 @@ build/
 oh_modules/
 entry/build/
 local.properties
+AppScope/.hvigor/
 
 # 编辑器
 .idea/
@@ -18,3 +19,10 @@ Thumbs.db
 
 # Node（仅测试脚本临时产物）
 node_modules/
+
+# 本地发布配置（含私钥/密码加密组件，勿提交）
+.ohpm_crypto/
+build_log.txt
+
+# hvigor 构建自动生成
+BuildProfile.ets
