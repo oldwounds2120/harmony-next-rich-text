@@ -10,7 +10,7 @@
  * 若已通过 ohpm 安装三方库（后续发布后）：
  *  import { HtmlRichText, RichTextConfig } from 'htmlrichtext';
  */
-import { HtmlRichText, RichTextConfig } from '../Index';
+import { HtmlRichText, RichTextConfig } from '../htmlrichtext/Index';
 import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 

@@ -1,0 +1,12 @@
+{
+  "module": {
+    "name": "htmlrichtext",
+    "type": "har",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1"
+    ],
+    "installationFree": false
+  }
+}
