@@ -1,8 +1,8 @@
 /**
  * Index.ets - 组件统一导出
- * 页面中：import { RichText, RichTextConfig } from '../richtext/Index';
+ * 页面中：import { HtmlRichText, RichTextConfig } from '../richtext/Index';
  */
-export { RichText } from './RichText';
+export { HtmlRichText } from './RichText';
 export { RichTextConfig } from './RichTextConfig';
 export { ImagePreviewDialog } from './ImagePreviewDialog';
 export { HtmlParser } from './HtmlParser';

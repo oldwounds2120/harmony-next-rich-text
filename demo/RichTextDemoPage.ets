@@ -8,7 +8,7 @@
  *  3. 在 main_pages.json 中注册：{ "src": "pages/RichTextDemoPage" }
  *  4. 编译运行即可看到所有标签的渲染效果
  */
-import { RichText, RichTextConfig } from '../richtext/Index';
+import { HtmlRichText, RichTextConfig } from '../richtext/Index';
 import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 
@@ -118,7 +118,7 @@ struct RichTextDemoPage {
       // 正文区
       Scroll() {
         Column() {
-          RichText({
+          HtmlRichText({
             html: this.html,
             config: this.config,
             baseUrl: '',

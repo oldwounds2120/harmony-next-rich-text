@@ -53,7 +53,7 @@ richtext/
 ### 3. 在你的页面里使用
 
 ```ts
-import { RichText, RichTextConfig } from '../richtext/Index';
+import { HtmlRichText, RichTextConfig } from '../richtext/Index';
 
 @Entry
 @Component
@@ -64,7 +64,7 @@ struct ArticlePage {
   build() {
     Scroll() {
       Column() {
-        RichText({
+        HtmlRichText({
           html: this.html,                 // HTML 字符串（变化会自动重新解析）
           config: this.config,             // 样式配置（可空，用默认值）
           baseUrl: 'https://cdn.example.com', // 图片/链接相对路径前缀（可选）
@@ -86,7 +86,7 @@ struct ArticlePage {
 
 ## 四、API
 
-### RichText 参数
+### HtmlRichText 参数
 
 | 参数 | 类型 | 必填 | 说明 |
 | ---- | ---- | ---- | ---- |

@@ -34,7 +34,8 @@ function toArkAlign(a: AlignStyle): TextAlign {
     case AlignStyle.END:
       return TextAlign.End;
     case AlignStyle.JUSTIFY:
-      return TextAlign.Justify;
+      // ArkUI TextAlign 无 Justify 枚举，退化为左对齐
+      return TextAlign.Start;
     default:
       return TextAlign.Start;
   }
@@ -58,7 +59,7 @@ function toArkFontStyle(f?: FontStyleType): FontStyle {
 }
 
 @Component
-export struct RichText {
+export struct HtmlRichText {
   /** 富文本 HTML 字符串（变化时自动重新解析） */
   @Prop @Watch('onHtmlChange') html: string = ''
   /** 样式配置（建议父组件持有单例） */
@@ -99,7 +100,7 @@ export struct RichText {
     this.previewCtrl = null;
   }
 
-  onHtmlChange(): void {
+  onHtmlChange(propName: string): void {
     this.rebuild();
   }
 
@@ -177,7 +178,7 @@ export struct RichText {
   // ================= 渲染 =================
 
   build() {
-    Stack() {
+    Stack({ alignContent: Alignment.TopStart }) {
       Column() {
         if (this.blocks.length > 0) {
           ForEach(this.blocks, (block: RenderBlock) => {
@@ -189,7 +190,6 @@ export struct RichText {
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
-    .alignItems(HorizontalAlign.Start)
   }
 
   @Builder
@@ -266,7 +266,7 @@ export struct RichText {
         .fontSize(sp.fontSize ?? this.config.bodyFontSize)
         .fontWeight(sp.fontWeight ?? 400)
         .fontStyle(toArkFontStyle(sp.fontStyle))
-        .textDecoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
+        .decoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
         .fontColor(sp.color ?? this.config.bodyColor)
         .backgroundColor(sp.backgroundColor ?? '#00000000')
         .fontFamily(sp.fontFamily ?? this.config.bodyFontFamily)
@@ -431,7 +431,7 @@ export struct RichText {
                       .fontSize(sp.fontSize ?? this.config.bodyFontSize)
                       .fontWeight(sp.fontWeight ?? 400)
                       .fontStyle(toArkFontStyle(sp.fontStyle))
-                      .textDecoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
+                      .decoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
                       .fontColor(sp.color ?? this.config.tableTextColor)
                       .backgroundColor(sp.backgroundColor ?? '#00000000')
                   }, (sp: RichSpan, index: number) => index.toString())

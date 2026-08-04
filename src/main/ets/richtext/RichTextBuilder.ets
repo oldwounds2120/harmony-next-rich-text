@@ -170,7 +170,7 @@ export class RichTextBuilder {
         || tag === 'form' || tag === 'details' || tag === 'summary') {
         this.processContainer(out, child, style);
       } else if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') {
-        this.pushHeading(out, child, style, Number(tag[1]));
+        this.pushHeading(out, child, style, Number(tag.charAt(1)));
       } else if (tag === 'blockquote') {
         this.pushQuote(out, child, style);
       } else if (tag === 'ul' || tag === 'ol') {
@@ -542,7 +542,7 @@ export class RichTextBuilder {
       s.marginTop = 0;
       s.marginBottom = 0;
     } else if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5' || tag === 'h6') {
-      const lv: number = Number(tag[1]);
+      const lv: number = Number(tag.charAt(1));
       s.fontSize = this.config.headingSizes[lv - 1];
       s.fontWeight = this.config.headingWeights[lv - 1];
       s.color = this.config.headingColors[lv - 1];

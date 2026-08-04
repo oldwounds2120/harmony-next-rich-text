@@ -7,7 +7,7 @@ export struct ImagePreviewDialog {
   controller?: CustomDialogController
   @Link images: string[]
   @Link currentIndex: number
-  @State scale: number = 1
+  @State zoomScale: number = 1
 
   build() {
     Stack() {
@@ -19,12 +19,12 @@ export struct ImagePreviewDialog {
               .width('100%')
               .height('100%')
               .objectFit(ImageFit.Contain)
-              .scale({ x: this.scale, y: this.scale })
+              .scale({ x: this.zoomScale, y: this.zoomScale })
               .animation({ duration: 200, curve: Curve.EaseOut })
               .gesture(
                 TapGesture({ count: 2 })
                   .onAction(() => {
-                    this.scale = this.scale > 1 ? 1 : 2.6;
+                    this.zoomScale = this.zoomScale > 1 ? 1 : 2.6;
                   })
               )
           }
@@ -38,7 +38,7 @@ export struct ImagePreviewDialog {
       .loop(false)
       .onChange((index: number) => {
         this.currentIndex = index;
-        this.scale = 1;
+        this.zoomScale = 1;
       })
 
       // 右上角关闭按钮

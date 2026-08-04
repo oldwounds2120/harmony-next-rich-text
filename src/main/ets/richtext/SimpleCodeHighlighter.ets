@@ -109,11 +109,11 @@ export class SimpleCodeHighlighter {
         continue;
       }
       // 数字（0x/0b/0o、小数、科学计数）
-      if (this.isDigit(ch) || (ch === '.' && this.isDigit(next))) {
+      if (SimpleCodeHighlighter.isDigit(ch) || (ch === '.' && SimpleCodeHighlighter.isDigit(next))) {
         let j = i;
         while (j < n) {
           const c: string = code[j];
-          if (this.isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+          if (SimpleCodeHighlighter.isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
             || c === 'x' || c === 'X' || c === 'b' || c === 'B' || c === 'o' || c === 'O'
             || c === '_' || c === '.') {
             j += 1;
@@ -123,7 +123,7 @@ export class SimpleCodeHighlighter {
             j += 1;
             continue;
           }
-          if ((c === 'e' || c === 'E') && j + 1 < n && (this.isDigit(code[j + 1]) || code[j + 1] === '+' || code[j + 1] === '-')) {
+          if ((c === 'e' || c === 'E') && j + 1 < n && (SimpleCodeHighlighter.isDigit(code[j + 1]) || code[j + 1] === '+' || code[j + 1] === '-')) {
             j += 1;
             continue;
           }
@@ -134,9 +134,9 @@ export class SimpleCodeHighlighter {
         continue;
       }
       // 单词 / 标识符
-      if (this.isWordStart(ch)) {
+      if (SimpleCodeHighlighter.isWordStart(ch)) {
         let j = i;
-        while (j < n && this.isWordChar(code[j])) {
+        while (j < n && SimpleCodeHighlighter.isWordChar(code[j])) {
           j += 1;
         }
         const word: string = code.substring(i, j);
