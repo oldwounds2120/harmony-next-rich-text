@@ -1,6 +1,6 @@
 # 鸿蒙 NEXT 自定义富文本解析组件（RichText）
 
-> [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) ![Language](https://img.shields.io/badge/Language-ArkTS-orange.svg) ![Platform](https://img.shields.io/badge/Platform-HarmonyOS%20NEXT-green.svg)
+> [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE) ![Language](https://img.shields.io/badge/Language-ArkTS-orange.svg) ![Platform](https://img.shields.io/badge/Platform-HarmonyOS%20NEXT-green.svg)
 
 > 不依赖 WebView 和系统 RichText 的自研 HTML 富文本组件，专为资讯/文章详情页设计。
 > 手写 HTML 解析器 + ArkUI 原生渲染（Text / Span / Image / Flex / Grid），样式完全可控。
@@ -187,5 +187,7 @@ node --experimental-transform-types run.ts
 
 ## 九、开源协议
 
-本项目基于 [MIT License](LICENSE) 开源，你可以自由使用、修改、商用（含闭源项目），
-只需保留版权声明。如果这个组件帮到了你，欢迎点个 Star ⭐。
+本项目基于 [Apache License 2.0](LICENSE) 开源（版权声明见 [NOTICE](NOTICE)）。
+你可以自由使用、修改、商用（含闭源项目）；分发或修改时需保留协议与版权声明，
+并对修改过的文件加以标注。Apache 协议还包含明确的专利授权条款，对使用者更友好。
+如果这个组件帮到了你，欢迎点个 Star ⭐。
