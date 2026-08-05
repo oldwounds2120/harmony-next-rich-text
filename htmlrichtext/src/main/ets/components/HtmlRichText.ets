@@ -19,7 +19,7 @@
  *  - 代码块支持横向滚动与轻量语法高亮
  *  - 所有样式集中在 RichTextConfig，可整体定制
  */
-import { LengthMetrics } from '@kit.ArkUI';
+import { LengthMetrics, display } from '@kit.ArkUI';
 import {
   RenderBlock, InlineGroup, RichSpan, TableCell, AlignStyle, DecorationStyle, FontStyleType
 } from '../core/RichTextModels';
@@ -73,6 +73,13 @@ export struct HtmlRichText {
   onImageClick?: (index: number, url: string) => void
   /** 图片加载失败回调 */
   onImageLoadError?: (url: string) => void
+  /**
+   * 屏幕宽度（vp），可选入参：由使用方传入可避免组件自取；
+   * 未传入时组件在 aboutToAppear 中通过 display 获取（兜底 360vp）。
+   * TODO(折叠屏/分屏适配)：display.getDefaultDisplaySync() 只取一次，
+   * 分屏/折叠态变化时屏幕宽度不会自动刷新，后续需监听窗口尺寸变化更新此值。
+   */
+  screenWidthVp: number = -1
 
   @State private blocks: RenderBlock[] = []
   @State private images: string[] = []
@@ -81,18 +88,15 @@ export struct HtmlRichText {
   private previewCtrl: CustomDialogController | null = null
 
   aboutToAppear(): void {
-    this.previewCtrl = new CustomDialogController({
-      builder: ImagePreviewDialog({
-        images: $images,
-        currentIndex: $previewIndex
-      }),
-      customStyle: true,
-      autoCancel: true,
-      alignment: DialogAlignment.Center,
-      backgroundColor: '#00000000',
-      width: '100%',
-      height: '100%'
-    });
+    // 屏幕宽度：优先使用方传入，否则组件自取（物理像素 ÷ 密度 → vp），失败兜底 360
+    if (this.screenWidthVp <= 0) {
+      try {
+        const d = display.getDefaultDisplaySync();
+        this.screenWidthVp = d.width / d.densityPixels;
+      } catch (e) {
+        this.screenWidthVp = 360;
+      }
+    }
     this.rebuild();
   }
 
@@ -139,13 +143,49 @@ export struct HtmlRichText {
     this.onImageClick?.(index, src);
     if (this.config.enableImagePreview && this.images.length > 0) {
       this.previewIndex = index;
-      this.previewCtrl?.open();
+      this.openPreview();
     }
+  }
+
+  /**
+   * 打开预览弹窗：每次打开前重建 CustomDialogController。
+   * 原因：弹窗的 images/currentIndex 是构造时快照（普通参数，非 @Link），
+   * 且 rebuild() 会更换 images 数组引用——重建保证 currentIndex 从点击的图片开始、
+   * images 为最新列表（修复"点第 N 张图预览却停在首张"问题）。
+   */
+  private openPreview(): void {
+    this.previewCtrl?.close(); // 先关旧弹窗（若存在），再重建，避免重复弹窗
+    this.previewCtrl = new CustomDialogController({
+      builder: ImagePreviewDialog({
+        images: this.images,
+        currentIndex: this.previewIndex
+      }),
+      customStyle: true,
+      autoCancel: true,
+      alignment: DialogAlignment.Center,
+      backgroundColor: '#00000000',
+      width: '100%',
+      height: '100%'
+    });
+    this.previewCtrl.open();
   }
 
   private onImageTap(src: string): void {
     const idx: number = this.images.indexOf(src);
     this.openImage(idx < 0 ? 0 : idx, src);
+  }
+
+  /**
+   * 大图判定：图片 HTML 声明的宽度 ≥ 屏幕宽度 × largeImageRatio → 正文大图，
+   * 渲染时自适应铺满；未声明宽度一律视为小图（不放大，安全选择）。
+   * 判定只依赖图片自身声明宽度，与排版上下文（混排/独占）无关。
+   */
+  private isLargeImage(g: InlineGroup): boolean {
+    const w = g.width;
+    if (w === undefined || w <= 0) {
+      return false;
+    }
+    return w >= this.screenWidthVp * this.config.largeImageRatio;
   }
 
   private blockToGroup(block: RenderBlock): InlineGroup {
@@ -183,6 +223,48 @@ export struct HtmlRichText {
     return out;
   }
 
+  /**
+   * 生成内容稳定的 ForEach key（替换 index.toString()）：
+   * key = 类型前缀 + 内容特征（文本取前 16 字符、图片取 src、链接取 href），
+   * 再拼接出现序号保证同级唯一。
+   * 优点：内容不变时 key 稳定，ArkUI 组件可正确复用；内容变化时 key 改变，强制重建。
+   */
+  private stableKey(kind: string, text: string, seq: number): string {
+    let content = text;
+    if (content.length > 16) {
+      content = content.substring(0, 16);
+    }
+    return kind + '_' + content + '_' + seq.toString();
+  }
+
+  /** 取 RenderBlock 的内容特征：文本块取首个 span 文本，图片取 src，其余取 kind */
+  private blockKeyText(block: RenderBlock): string {
+    if (block.kind === 'text' || block.kind === 'heading') {
+      if (block.groups.length > 0 && block.groups[0].spans.length > 0) {
+        return block.groups[0].spans[0].text;
+      }
+      return '';
+    }
+    if (block.kind === 'image') {
+      return block.imageSrc;
+    }
+    if (block.kind === 'table') {
+      return block.tableRows.length.toString();
+    }
+    return block.kind;
+  }
+
+  /** 取 InlineGroup 的内容特征：文本取首个 span 文本，图片取 src，链接取 href */
+  private groupKeyText(g: InlineGroup): string {
+    if (g.kind === 'text') {
+      return g.spans.length > 0 ? g.spans[0].text : '';
+    }
+    if (g.kind === 'link') {
+      return g.href;
+    }
+    return g.src;
+  }
+
   // ================= 渲染 =================
 
   build() {
@@ -191,7 +273,7 @@ export struct HtmlRichText {
         if (this.blocks.length > 0) {
           ForEach(this.blocks, (block: RenderBlock) => {
             this.BlockBuilder(block)
-          }, (block: RenderBlock, index: number) => index.toString())
+          }, (block: RenderBlock, index: number) => this.stableKey(block.kind, this.blockKeyText(block), index))
         }
       }
       .width('100%')
@@ -267,9 +349,10 @@ export struct HtmlRichText {
               }
             })
           } else if (g.kind === 'image') {
-            this.InlineImage(g)
+            // 行内图片也按声明宽度判定是否为大图：大图自动升级为自适应渲染
+            this.InlineImage(g, this.isLargeImage(g))
           }
-        }, (g: InlineGroup, index: number) => index.toString())
+        }, (g: InlineGroup, index: number) => this.stableKey(g.kind, this.groupKeyText(g), index))
       }
       .width('100%')
     }
@@ -295,7 +378,7 @@ export struct HtmlRichText {
         .fontFamily(sp.fontFamily ?? this.config.bodyFontFamily)
         .baselineOffset(LengthMetrics.vp(sp.baselineOffset ?? 0))
         .letterSpacing(sp.letterSpacing ?? 0)
-    }, (sp: RichSpan, index: number) => index.toString())
+    }, (sp: RichSpan, index: number) => this.stableKey('span', sp.text + (sp.color ?? ''), index))
   }
 
   // ---------- 图片 ----------
@@ -303,22 +386,46 @@ export struct HtmlRichText {
   @Builder
   private ImageBlock(block: RenderBlock) {
     Column() {
-      this.InlineImage(this.blockToGroup(block))
+      // 块级图片：始终按大图处理（自适应铺满）
+      this.InlineImage(this.blockToGroup(block), true)
     }
     .width('100%')
     .alignItems(HorizontalAlign.Center)
   }
 
   /**
-   * 行内图片渲染：
-   *  - 未指定高度时只设宽度（默认 100%），Image 会按原始比例等比缩放；
-   *  - 指定了高度则按固定尺寸渲染（用 Cover 裁剪避免变形）；
+   * 行内/块级图片渲染（四档，按优先级判定，不可调换顺序）：
+   *  1. isBlock=true（块级图片/判定为大图）：铺满容器宽度，高度按原图比例自适应
+   *     （等同 CSS width:100%; height:auto），忽略 PC 编辑器设置的固定宽高。
+   *     ⚠️ 必须排最前：正文插图常带 width+height，若 height 分支在前会被短路，
+   *     大图自适应永远不生效。
+   *  2. 有宽有高（小图）：按固定尺寸渲染（Cover 裁剪避免变形）；
+   *  3. 有宽无高：按声明宽度渲染，高度等比，maxWidth 100% 防溢出；
+   *  4. 无宽高：按原始像素尺寸显示、不放大，maxWidth 100% 防溢出（避免小图标被拉大变形）。
    *  - backgroundColor 作为加载中的占位底色；onError 抛出加载失败回调；
    *  - onClick 触发全屏预览（config.enableImagePreview 可关闭，仅留回调）。
    */
   @Builder
-  private InlineImage(g: InlineGroup) {
-    if (g.height !== undefined) {
+  private InlineImage(g: InlineGroup, isBlock: boolean = false) {
+    if (isBlock) {
+      // 档1：块级/大图 → 铺满宽度，等比自适应（忽略 PC 固定宽高）
+      Image(g.src)
+        .width('100%')
+        .objectFit(ImageFit.Contain)
+        .borderRadius(g.borderRadius ?? this.config.imageRadius)
+        .backgroundColor(this.config.imagePlaceholderColor)
+        .constraintSize({ maxWidth: '100%' })
+        .margin({ top: this.config.imageMargin, bottom: this.config.imageMargin })
+        .onClick(() => {
+          this.onImageTap(g.src);
+        })
+        .onError(() => {
+          if (this.onImageLoadError !== undefined) {
+            this.onImageLoadError(g.src);
+          }
+        })
+    } else if (g.height !== undefined) {
+      // 档2：有宽有高（小图）→ 固定尺寸渲染（Cover 裁剪避免变形）
       Image(g.src)
         .width(g.width ?? '100%')
         .height(g.height)
@@ -335,10 +442,27 @@ export struct HtmlRichText {
             this.onImageLoadError(g.src);
           }
         })
-    } else {
+    } else if (g.width !== undefined) {
+      // 档3：有宽无高 → 按声明宽度渲染，高度等比，不拉满
       Image(g.src)
-        .width(g.width ?? '100%')
-        .objectFit(ImageFit.Fill)
+        .width(g.width)
+        .objectFit(ImageFit.Contain)
+        .borderRadius(g.borderRadius ?? this.config.imageRadius)
+        .backgroundColor(this.config.imagePlaceholderColor)
+        .constraintSize({ maxWidth: '100%' })
+        .margin({ top: this.config.imageInlineMargin, bottom: this.config.imageInlineMargin })
+        .onClick(() => {
+          this.onImageTap(g.src);
+        })
+        .onError(() => {
+          if (this.onImageLoadError !== undefined) {
+            this.onImageLoadError(g.src);
+          }
+        })
+    } else {
+      // 档4：无宽高 → 按原始像素尺寸显示、不放大；maxWidth 100% 防溢出
+      Image(g.src)
+        .objectFit(ImageFit.Contain)
         .borderRadius(g.borderRadius ?? this.config.imageRadius)
         .backgroundColor(this.config.imagePlaceholderColor)
         .constraintSize({ maxWidth: '100%' })
@@ -372,8 +496,12 @@ export struct HtmlRichText {
         Column() {
           ForEach(block.codeLinesTokens, (tokens: RichSpan[], lineIndex: number) => {
             this.CodeLine(tokens, lineIndex)
-          }, (tokens: RichSpan[], lineIndex: number) => lineIndex.toString())
+          }, (tokens: RichSpan[], lineIndex: number) => this.stableKey('codeLine',
+            tokens.length > 0 ? tokens[0].text : '', lineIndex))
         }
+        // 撑满 Scroll 视口宽度：横向滚动时 Column 默认按内容宽度自适应，
+        // 代码行短于屏幕时会被居中；width('100%') 让代码行始终从左开始。
+        .width('100%')
         .alignItems(HorizontalAlign.Start)
         .padding(this.config.codeBlockPadding)
       }
@@ -399,7 +527,7 @@ export struct HtmlRichText {
           Span(sp.text)
             .fontColor(sp.color ?? this.config.codeBlockTextColor)
             .fontSize(this.config.codeBlockFontSize)
-        }, (sp: RichSpan, index: number) => index.toString())
+        }, (sp: RichSpan, index: number) => this.stableKey('codeToken', sp.text + (sp.color ?? ''), index))
       }
       .fontFamily(this.config.codeFontFamily)
       .fontSize(this.config.codeBlockFontSize)
@@ -421,7 +549,7 @@ export struct HtmlRichText {
       Column() {
         ForEach(block.children, (child: RenderBlock) => {
           this.BlockBuilder(child)
-        }, (child: RenderBlock, index: number) => index.toString())
+        }, (child: RenderBlock, index: number) => this.stableKey(child.kind, this.blockKeyText(child), index))
       }
       .layoutWeight(1)
       .margin({ left: 10 })
@@ -446,7 +574,7 @@ export struct HtmlRichText {
       Column() {
         ForEach(block.children, (child: RenderBlock) => {
           this.BlockBuilder(child)
-        }, (child: RenderBlock, index: number) => index.toString())
+        }, (child: RenderBlock, index: number) => this.stableKey(child.kind, this.blockKeyText(child), index))
       }
       .layoutWeight(1)
     }
@@ -473,7 +601,7 @@ export struct HtmlRichText {
                       .decoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
                       .fontColor(sp.color ?? this.config.tableTextColor)
                       .backgroundColor(sp.backgroundColor ?? '#00000000')
-                  }, (sp: RichSpan, index: number) => index.toString())
+                  }, (sp: RichSpan, index: number) => this.stableKey('cellSpan', sp.text + (sp.color ?? ''), index))
                 }
                 .lineHeight(this.config.bodyFontSize * 1.5)
                 .width('100%')

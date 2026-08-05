@@ -328,7 +328,8 @@ export class RichTextBuilder {
 
   /** 块级图片：解析 src（可拼接 baseUrl）、width/height 属性，并分配全文图片序号（供预览索引） */
   private pushImage(out: RenderBlock[], node: RichNode, style: RichStyle): void {
-    const src: string = this.resolveUrl(node.attrs.get('src') ?? '');
+    // 图片 src 允许 data:/file:（base64 图等），其余协议被 resolveUrl 白名单过滤
+    const src: string = this.resolveUrl(node.attrs.get('src') ?? '', true);
     if (src.length === 0) {
       return;
     }
@@ -546,7 +547,7 @@ export class RichTextBuilder {
   private makeImageGroup(node: RichNode, style: RichStyle): InlineGroup {
     const g: InlineGroup = new InlineGroup();
     g.kind = 'image';
-    g.src = this.resolveUrl(node.attrs.get('src') ?? '');
+    g.src = this.resolveUrl(node.attrs.get('src') ?? '', true);
     g.alt = node.attrs.get('alt') ?? '';
     g.width = this.parseLen(node.attrs.get('width') ?? (style.width ?? undefined));
     g.height = this.parseLen(node.attrs.get('height') ?? (style.height ?? undefined));
@@ -574,6 +575,7 @@ export class RichTextBuilder {
     }
     const g: InlineGroup = new InlineGroup();
     g.kind = 'link';
+    // 链接 href 只放行 http/https，javascript:/data:/file: 等协议被拦截（安全底线）
     g.href = this.resolveUrl(node.attrs.get('href') ?? '');
     g.spans = this.flattenInline(node.children, linkStyle).flatMap((sub: InlineGroup): RichSpan[] => sub.spans);
     return g;
@@ -921,12 +923,24 @@ export class RichTextBuilder {
     return num; // px / vp / 纯数字
   }
 
-  /** 图片/链接地址处理：绝对地址（http/https/data/file）与根路径 /xxx 原样返回，否则拼接 baseUrl 前缀 */
-  private resolveUrl(src: string): string {
+  /**
+   * 图片/链接地址处理（含协议白名单，安全加固）：
+   *  - 协议白名单：仅 http/https 始终放行；图片额外放行 data:/file:（base64 图合法），
+   *    链接不放行 data:/file:；
+   *  - javascript:/vbscript: 等伪协议一律拦截，返回空字符串（安全底线，防注入）；
+   *  - 根路径 /xxx 或未提供 baseUrl 时原样返回；其余相对路径拼接 baseUrl 前缀。
+   */
+  private resolveUrl(src: string, allowDataFile: boolean = false): string {
+    const lower: string = src.toLowerCase();
+    if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) {
+      return '';
+    }
     if (src.startsWith('http://') || src.startsWith('https://')
-      || src.startsWith('data:') || src.startsWith('file:')
       || src.startsWith('/') || this.baseUrl.length === 0) {
       return src;
+    }
+    if (lower.startsWith('data:') || lower.startsWith('file:')) {
+      return allowDataFile ? src : '';
     }
     return this.baseUrl.replace(/\/$/, '') + '/' + src.replace(/^\//, '');
   }

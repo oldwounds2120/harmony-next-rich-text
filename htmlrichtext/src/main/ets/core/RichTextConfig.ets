@@ -64,4 +64,11 @@ export class RichTextConfig {
   imageInlineMargin: number = 6
   imagePlaceholderColor: string = '#F0F0F0'
   enableImagePreview: boolean = true
+
+  /**
+   * 大图判定比例（0~1）：图片 HTML 声明的宽度 ≥ 屏幕宽度 × 该比例 → 视为正文大图，
+   * 移动端自适应铺满（等同 CSS width:100%; height:auto），忽略 PC 编辑器设置的固定宽高；
+   * 低于该比例 → 视为小图/图标/表情，保持属性尺寸不放大。
+   */
+  largeImageRatio: number = 0.6
 }
