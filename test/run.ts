@@ -158,6 +158,54 @@ console.log('\n[11] 表格');
   assert(cellGroups.length > 0 && cellGroups[0].spans[0].text === '1', '单元格内容正确');
 }
 
+console.log('\n[11b] 表格：tbody/thead 容器包裹');
+{
+  // 后端常见结构：<table><tbody><tr>…</tr></tbody></table>，行被容器包裹，
+  // 修复前 pushTable 只找 table 直接子 tr，tbody 被跳过导致整个表格不渲染
+  const blocks = build('<table style="width:auto;"><tbody>' +
+    '<tr><th>类型</th><th>含义</th></tr>' +
+    '<tr><td><strong>feat</strong></td><td>新功能</td></tr>' +
+    '</tbody></table>');
+  assert(blocks.length === 1 && blocks[0].kind === 'table', 'tbody 包裹的表格正常生成（不丢失）');
+  assert(blocks[0].tableRows.length === 2, '两行（穿透 tbody 收集）');
+  assert(blocks[0].tableCols === 2, '两列');
+  assert(blocks[0].tableRows[0][0].isHeader === true, 'th 表头识别');
+  const sp: RichSpan = blocks[0].tableRows[1][0].groups[0].spans[0];
+  assert(sp.text === 'feat' && sp.fontWeight === 600, '单元格内 strong 加粗保留');
+
+  const blocks2 = build('<table><thead><tr><th>H</th></tr></thead><tfoot><tr><td>F</td></tr></tfoot></table>');
+  assert(blocks2.length === 1 && blocks2[0].tableRows.length === 2, 'thead + tfoot 行均被收集');
+}
+
+console.log('\n[11c] 表格：colspan 展开列数');
+{
+  const blocks = build('<table><tr><td colspan="2">跨两列</td><td>c</td></tr><tr><td>a</td><td>b</td><td>d</td></tr></table>');
+  assert(blocks[0].tableCols === 3, '按 colspan 展开统计列数（3 列）: ' + String(blocks[0].tableCols));
+  assert(blocks[0].tableRows[0][0].colSpan === 2, 'colspan 属性保留');
+}
+
+console.log('\n[11d] 表格：div 容器包裹（常见正文结构）');
+{
+  // 后端正文常整体包在 <div class="entry-content"> 里，修复前 div 内的
+  // table 经 processContainer 递归时 tbody/tr 落入兜底分支，被压成纯文本
+  const blocks = build('<div class="entry-content"><p>前文</p><table><tbody>' +
+    '<tr><th>类型</th><th>含义</th></tr><tr><td>feat</td><td>新功能</td></tr>' +
+    '</tbody></table><p>后文</p></div>');
+  const kinds = blocks.map((b: RenderBlock) => b.kind).join(',');
+  assert(kinds === 'text,table,text', 'div 内表格生成独立表格块: ' + kinds);
+  const tableBlock = blocks.find((b: RenderBlock) => b.kind === 'table');
+  assert(tableBlock !== undefined && tableBlock.tableRows.length === 2, 'div 内表格行数正确');
+  assert(tableBlock !== undefined && tableBlock.tableCols === 2, 'div 内表格列数正确');
+}
+
+console.log('\n[11e] 表格：div 容器内标题保持标题块');
+{
+  // isBlockTag 补充 h1~h6 后，div 内标题不再退化为正文
+  const blocks = build('<div><h2>类型速查表</h2><p>正文</p></div>');
+  assert(blocks[0].kind === 'heading' && blocks[0].headingLevel === 2, 'div 内 h2 生成标题块');
+  assert(blocks[1].kind === 'text', 'div 内 p 生成文本块');
+}
+
 console.log('\n[12] 标题与内联样式');
 {
   const blocks = build('<h1 style="color:#ff0000;">红标题</h1><p style="font-size:20px;text-align:center;">居中</p>');

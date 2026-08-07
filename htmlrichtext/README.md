@@ -180,7 +180,7 @@ config.imageRadius = 8;              // 图片圆角
 | 列表 | `ul` `ol` `li`（支持嵌套，圆点/空心圆/方块/数字序号） |
 | 代码 | `pre` `code` `kbd` `samp` `tt`（代码块横向滚动 + 轻量语法高亮） |
 | 引用 | `blockquote`（左边框 + 背景色） |
-| 表格 | `table` `tr` `td` `th`（支持 colspan/rowspan、表头背景、边框） |
+| 表格 | `table` `tr` `td` `th` `thead` `tbody` `tfoot`（支持 colspan/rowspan、行内等高、表头背景/文字色/字重、斑马纹、最小行高、完整边框） |
 | 其他 | `hr` `br` `center` `section` `article` 等 |
 
 另支持：

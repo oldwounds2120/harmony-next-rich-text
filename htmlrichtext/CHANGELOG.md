@@ -2,6 +2,28 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [1.0.2] - 2026-08-07
+
+### 修复（表格）
+- **表格不渲染（严重）**：后端常见的 `<table><tbody><tr>…</tr></tbody></table>`
+  结构以及 `<div class="entry-content">` 包裹正文时，表格整体不渲染、内容被压成纯文本。
+  根因与修复：
+  - `pushTable` 只收集 table 直接子 `tr`，`tbody` 容器被跳过 → 递归穿透
+    `thead/tbody/tfoot` 等容器收集 `tr`；
+  - 容器（div 等）内块级子标签原直接遍历子节点，导致 table/标题/代码块/列表/分割线
+    落入兜底分支退化为普通文本或丢失 → 新增 `processBlock` 统一分发，容器与顶层共用；
+  - `isBlockTag` 补充 `h1~h6`，div 内标题不再退化为正文；
+  - 表格列数改为按 colspan 展开统计，支持跨列单元格的列模板
+- **同一行内单元格不撑满行高**：某单元格换行变高时，同行的矮单元格背景铺不满整行、
+  露出边框底色。`TableBlock` 改为委托独立组件 `TableBlockView`：通过 `onAreaChange`
+  测量每行最高单元格高度，全部行测出后给 GridItem 与内层 Column 同时加
+  `constraintSize({ minHeight })`，同一行矮单元格被撑满、背景铺满（保持只用
+  `columnsTemplate`；`rowsTemplate` 固定行列模式实测只渲染第一行，勿用）
+- **表格最后一行没有下边框**：Grid 底部补 1vp 同色横线（`rowsGap` 只产生行间缝隙）
+- **新增 5 个表格样式配置项**：`tableHeaderTextColor` / `tableHeaderTextWeight` /
+  `tableEvenRowBackground` / `tableOddRowBackground`（斑马纹）/ `tableMinRowHeight`
+  （最小行高兜底，0 = 不设下限）
+
 ## [1.0.1] - 2026-08-05
 
 ### 修复

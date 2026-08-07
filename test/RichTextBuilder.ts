@@ -11,9 +11,9 @@
 import {
   RichNode, NodeType, RichStyle, RichSpan, InlineGroup, RenderBlock, TableCell,
   AlignStyle, DecorationStyle, FontStyleType
-} from './RichTextModels';
-import { RichTextConfig } from './RichTextConfig';
-import { SimpleCodeHighlighter } from './SimpleCodeHighlighter';
+} from './RichTextModels.ts';
+import { RichTextConfig } from './RichTextConfig.ts';
+import { SimpleCodeHighlighter } from './SimpleCodeHighlighter.ts';
 
 const NAMED_COLORS: Map<string, string> = new Map<string, string>([
   ['black', '#000000'], ['white', '#ffffff'], ['red', '#ff0000'], ['green', '#008000'],

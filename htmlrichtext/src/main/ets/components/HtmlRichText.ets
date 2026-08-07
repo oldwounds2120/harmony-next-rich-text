@@ -20,6 +20,7 @@
  *  - 所有样式集中在 RichTextConfig，可整体定制
  */
 import { LengthMetrics, display } from '@kit.ArkUI';
+// 注意：onAreaChange 回调的 Area 类型为全局声明类型，无需（也不能）从 @kit.ArkUI 导入
 import {
   RenderBlock, InlineGroup, RichSpan, TableCell, AlignStyle, DecorationStyle, FontStyleType
 } from '../core/RichTextModels';
@@ -197,30 +198,6 @@ export struct HtmlRichText {
     g.height = block.imageHeight;
     g.borderRadius = this.config.imageRadius;
     return g;
-  }
-
-  private gridTemplate(cols: number): string {
-    let t: string = '';
-    for (let i = 0; i < cols; i++) {
-      t += (i === 0 ? '1fr' : ' 1fr');
-    }
-    return t;
-  }
-
-  private cellSpans(cell: TableCell): RichSpan[] {
-    const out: RichSpan[] = [];
-    for (const g of cell.groups) {
-      if (g.kind === 'text' || g.kind === 'link') {
-        for (const sp of g.spans) {
-          out.push(sp);
-        }
-      } else if (g.kind === 'image') {
-        const sp: RichSpan = new RichSpan();
-        sp.text = g.alt.length > 0 ? g.alt : '[图片]';
-        out.push(sp);
-      }
-    }
-    return out;
   }
 
   /**
@@ -584,48 +561,18 @@ export struct HtmlRichText {
 
   // ---------- 表格 ----------
 
+  /**
+   * 表格渲染：委托独立组件 TableBlockView（见文件底部）。
+   * 委托原因：行高测量（onAreaChange）需要组件实例持有每行测量状态，
+   * @Builder 方法无法持有独立状态；TableBlockView 负责：
+   *  - 行内等高：测量每行最高单元格高度，给该行所有 GridItem/内层 Column 加
+   *    minHeight，同一行矮单元格被撑满、背景铺满整行（问题 1）；
+   *  - 斑马纹 / 表头文字色字重（走 RichTextConfig 新配置项）；
+   *  - Grid 底部补 1vp 横线（问题 3：rowsGap 只产生行间缝隙，最后一行无下边框）。
+   */
   @Builder
   private TableBlock(block: RenderBlock) {
-    Column() {
-      Grid() {
-        ForEach(block.tableRows, (row: TableCell[], rowIndex: number) => {
-          ForEach(row, (cell: TableCell, colIndex: number) => {
-            GridItem() {
-              Column() {
-                Text() {
-                  ForEach(this.cellSpans(cell), (sp: RichSpan) => {
-                    Span(sp.text)
-                      .fontSize(sp.fontSize ?? this.config.bodyFontSize)
-                      .fontWeight(sp.fontWeight ?? 400)
-                      .fontStyle(toArkFontStyle(sp.fontStyle))
-                      .decoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
-                      .fontColor(sp.color ?? this.config.tableTextColor)
-                      .backgroundColor(sp.backgroundColor ?? '#00000000')
-                  }, (sp: RichSpan, index: number) => this.stableKey('cellSpan', sp.text + (sp.color ?? ''), index))
-                }
-                .lineHeight(this.config.bodyFontSize * 1.5)
-                .width('100%')
-              }
-              .padding(this.config.tableCellPadding)
-              .backgroundColor(cell.isHeader ? this.config.tableHeaderBackground : Color.White)
-              .alignItems(HorizontalAlign.Start)
-            }
-            .columnStart(colIndex)
-            .columnEnd(colIndex + cell.colSpan - 1)
-            .rowStart(rowIndex)
-            .rowEnd(rowIndex + cell.rowSpan - 1)
-          }, (cell: TableCell, colIndex: number) => rowIndex.toString() + '-' + colIndex.toString())
-        }, (row: TableCell[], rowIndex: number) => rowIndex.toString())
-      }
-      .columnsTemplate(this.gridTemplate(block.tableCols))
-      .rowsGap(1)
-      .columnsGap(1)
-      .backgroundColor(this.config.tableBorderColor)
-      .width('100%')
-    }
-    .width('100%')
-    .clip(true)
-    .borderRadius(4)
+    TableBlockView({ config: this.config, block: block })
   }
 
   // ---------- 分割线 ----------
@@ -636,5 +583,161 @@ export struct HtmlRichText {
       .width('100%')
       .height(1)
       .backgroundColor(this.config.hrColor)
+  }
+}
+
+/**
+ * TableBlockView - 表格渲染独立组件（HtmlRichText 委托调用）
+ *
+ * 解决三个实测问题（详见 docs/表格行高与边框问题及修改建议-20260807.md）：
+ *  1. 行内不等高：同一行某单元格换行变高时，矮单元格背景铺不满整行、露出边框底色。
+ *     方案：通过 rowSpan===1 单元格的 onAreaChange 上报高度，每行取最大值作为该行行高；
+ *     全部行测出后写入 @State rowMinHeights，给 GridItem 与内层 Column 同时加
+ *     constraintSize({ minHeight })，让 Grid 采纳行高、矮单元格被撑满、背景铺满。
+ *     - minHeight 必须同时作用到 GridItem 上（仅内层 Column 不足以让 Grid 采纳行高）；
+ *     - rowSpan>1 的跨行单元格不参与测量，避免污染单行行高；
+ *     - 值无变化时不重新赋值 @State，避免 onAreaChange→重渲染→再 onAreaChange 循环。
+ *  2. 不用 rowsTemplate 固定行列模式（实测只渲染第一行），始终只用 columnsTemplate。
+ *  3. 最后一行无下边框：rowsGap 只产生行间缝隙，Grid 底部补 1vp 同色横线。
+ *
+ * 注意事项：
+ *  - 独立 @Component 才能持有每行测量状态（@Builder 方法无法持有实例状态）；
+ *  - 未测出行高（如全表 rowSpan>1 / 测量失败）时 rowMinHeights 保持 0 = 自然行高，
+ *    安全降级为原始行为，不会丢行。
+ */
+@Component
+struct TableBlockView {
+  config: RichTextConfig = new RichTextConfig()
+  block: RenderBlock = new RenderBlock()
+
+  /** 每行已测高度（普通成员，非响应式，避免每次 onAreaChange 触发渲染） */
+  private measured: number[] = []
+  /** 每行最小行高（@State 驱动渲染） */
+  @State private rowMinHeights: number[] = []
+
+  private gridTemplate(cols: number): string {
+    let t: string = '';
+    for (let i = 0; i < cols; i++) {
+      t += (i === 0 ? '1fr' : ' 1fr');
+    }
+    return t;
+  }
+
+  /** 单元格内容 → Span 列表（图片在单元格内降级为 alt/[图片] 文本） */
+  private cellSpans(cell: TableCell): RichSpan[] {
+    const out: RichSpan[] = [];
+    for (const g of cell.groups) {
+      if (g.kind === 'text' || g.kind === 'link') {
+        for (const sp of g.spans) {
+          out.push(sp);
+        }
+      } else if (g.kind === 'image') {
+        const sp: RichSpan = new RichSpan();
+        sp.text = g.alt.length > 0 ? g.alt : '[图片]';
+        out.push(sp);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 行高测量上报：rowSpan===1 的 GridItem 上报自身高度，每行取最大值；
+   * 全部行都测出（>0）后才写入 rowMinHeights（提前应用会得到偏小的行高）。
+   */
+  private onRowMeasured(rowIndex: number, height: number): void {
+    if (height <= 0) {
+      return;
+    }
+    if (height <= this.measured[rowIndex]) {
+      return;
+    }
+    this.measured[rowIndex] = height;
+    // 全部行都测出才应用；未测出保持 0 = 自然行高（安全降级）
+    for (const h of this.measured) {
+      if (h <= 0) {
+        return;
+      }
+    }
+    const mins: number[] = [];
+    let changed: boolean = false;
+    for (let i = 0; i < this.measured.length; i++) {
+      const v: number = Math.max(this.measured[i], this.config.tableMinRowHeight);
+      if (v !== this.rowMinHeights[i]) {
+        changed = true;
+      }
+      mins.push(v);
+    }
+    if (changed) {
+      this.rowMinHeights = mins; // 值无变化不赋值，防循环渲染
+    }
+  }
+
+  /** 单元格背景：表头用表头背景，数据行按行号做斑马纹 */
+  private cellBackground(cell: TableCell, rowIndex: number): string {
+    if (cell.isHeader) {
+      return this.config.tableHeaderBackground;
+    }
+    return rowIndex % 2 === 0 ? this.config.tableEvenRowBackground : this.config.tableOddRowBackground;
+  }
+
+  build() {
+    Column() {
+      Grid() {
+        ForEach(this.block.tableRows, (row: TableCell[], rowIndex: number) => {
+          ForEach(row, (cell: TableCell, colIndex: number) => {
+            GridItem() {
+              Column() {
+                Text() {
+                  ForEach(this.cellSpans(cell), (sp: RichSpan) => {
+                    Span(sp.text)
+                      .fontSize(sp.fontSize ?? this.config.bodyFontSize)
+                      .fontWeight(cell.isHeader ? this.config.tableHeaderTextWeight : (sp.fontWeight ?? 400))
+                      .fontStyle(toArkFontStyle(sp.fontStyle))
+                      .decoration({ type: toArkDeco(sp.decoration), color: sp.decorationColor })
+                      .fontColor(cell.isHeader ? this.config.tableHeaderTextColor : (sp.color ?? this.config.tableTextColor))
+                      .backgroundColor(sp.backgroundColor ?? '#00000000')
+                  }, (sp: RichSpan, index: number) => 's' + index.toString())
+                }
+                .lineHeight(this.config.bodyFontSize * 1.5)
+                .width('100%')
+              }
+              // 内层 Column 同值 minHeight：背景铺满整行、内容顶对齐（未测出时 ??0 = 自然行高）
+              .constraintSize({ minHeight: this.rowMinHeights[rowIndex] ?? 0 })
+              .justifyContent(FlexAlign.Start)
+              .padding(this.config.tableCellPadding)
+              .backgroundColor(this.cellBackground(cell, rowIndex))
+              .alignItems(HorizontalAlign.Start)
+            }
+            // 关键：GridItem 也加 minHeight，Grid 才采纳该行行高，行内矮单元格被撑满
+            .constraintSize({ minHeight: this.rowMinHeights[rowIndex] ?? 0 })
+            .columnStart(colIndex)
+            .columnEnd(colIndex + cell.colSpan - 1)
+            .rowStart(rowIndex)
+            .rowEnd(rowIndex + cell.rowSpan - 1)
+            .onAreaChange((_oldV: Area, newV: Area) => {
+              if (cell.rowSpan === 1) {
+                const h: number = Number(newV.height);
+                if (!Number.isNaN(h) && h > 0) {
+                  this.onRowMeasured(rowIndex, h);
+                }
+              }
+            })
+          }, (cell: TableCell, colIndex: number) => rowIndex.toString() + '-' + colIndex.toString())
+        }, (row: TableCell[], rowIndex: number) => rowIndex.toString())
+      }
+      .columnsTemplate(this.gridTemplate(this.block.tableCols))
+      .rowsGap(1)
+      .columnsGap(1)
+      .backgroundColor(this.config.tableBorderColor)
+      .width('100%')
+      // 最后一行下边框：rowsGap 只产生行间缝隙，最底部补 1vp 同色横线
+      Row()
+        .width('100%')
+        .height(1)
+        .backgroundColor(this.config.tableBorderColor)
+    }
+    .width('100%')
+    .clip(true)
+    .borderRadius(4)
   }
 }

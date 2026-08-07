@@ -26,3 +26,6 @@ build_log.txt
 
 # hvigor 构建自动生成
 BuildProfile.ets
+
+# WorkBuddy 工作记忆（工具数据，勿提交）
+.workbuddy/
