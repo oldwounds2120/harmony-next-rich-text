@@ -260,6 +260,22 @@ export struct HtmlRichText {
     return g.src;
   }
 
+  /** 取一"视觉行"的内容特征：拼接行内各组的 key 文本，用于混排逐行 ForEach 的 key */
+  private lineKeyText(line: InlineGroup[]): string {
+    let s: string = '';
+    for (const g of line) {
+      s += this.groupKeyText(g);
+    }
+    return s;
+  }
+
+  /** 混排渲染用的"视觉行"数组：有按 \n 拆分的结果（groupLines）用拆分结果，
+   *  否则（如单链接/单图片组）按单行兜底。普通方法，供 @Builder 内 ForEach 调用
+   *  （@Builder 方法体内不允许局部变量声明，取行数组的逻辑必须抽成普通方法）。 */
+  private renderLinesOf(block: RenderBlock): InlineGroup[][] {
+    return block.groupLines.length > 0 ? block.groupLines : [block.groups];
+  }
+
   // ================= 渲染 =================
 
   build() {
@@ -323,35 +339,42 @@ export struct HtmlRichText {
       .textAlign(toArkAlign(block.textAlign))
       .width('100%')
     } else {
-      // 混排（文本 + 图片 / 链接）：Flex wrap，文本连片、图片/链接独立
-      Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Start }) {
-        ForEach(block.groups, (g: InlineGroup) => {
-          if (g.kind === 'text') {
-            Text() {
-              this.SpanList(g.spans)
-            }
-            .lineHeight(block.lineHeight)
-            .textAlign(TextAlign.Start)
-          } else if (g.kind === 'link') {
-            Text() {
-              this.SpanList(g.spans)
-            }
-            .lineHeight(block.lineHeight)
-            .textAlign(TextAlign.Start)
-            .onClick(() => {
-              if (this.onLinkClick !== undefined) {
-                // 使用方提供回调：全权交由回调处理，组件不跳转
-                this.onLinkClick(g.href);
-              } else if (this.config.linkOpenBrowser) {
-                // 未提供回调且开关开启：默认用系统浏览器打开
-                this.openLinkInBrowser(g.href);
+      // 混排（文本 + 图片 / 链接）：按"视觉行"逐行渲染。
+      // 行内全是单行内容，Flex 顶对齐基线一致；<br> 换行语义由行与行之间保留，
+      // 避免"含 \n 的多行文本组"与单行链接/文本组在同一 Flex 中顶对齐错位。
+      Column() {
+        ForEach(this.renderLinesOf(block), (line: InlineGroup[]) => {
+          Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Start }) {
+            ForEach(line, (g: InlineGroup) => {
+              if (g.kind === 'text') {
+                Text() {
+                  this.SpanList(g.spans)
+                }
+                .lineHeight(block.lineHeight)
+                .textAlign(TextAlign.Start)
+              } else if (g.kind === 'link') {
+                Text() {
+                  this.SpanList(g.spans)
+                }
+                .lineHeight(block.lineHeight)
+                .textAlign(TextAlign.Start)
+                .onClick(() => {
+                  if (this.onLinkClick !== undefined) {
+                    // 使用方提供回调：全权交由回调处理，组件不跳转
+                    this.onLinkClick(g.href);
+                  } else if (this.config.linkOpenBrowser) {
+                    // 未提供回调且开关开启：默认用系统浏览器打开
+                    this.openLinkInBrowser(g.href);
+                  }
+                })
+              } else if (g.kind === 'image') {
+                // 行内图片也按声明宽度判定是否为大图：大图自动升级为自适应渲染
+                this.InlineImage(g, this.isLargeImage(g))
               }
-            })
-          } else if (g.kind === 'image') {
-            // 行内图片也按声明宽度判定是否为大图：大图自动升级为自适应渲染
-            this.InlineImage(g, this.isLargeImage(g))
+            }, (g: InlineGroup, index: number) => this.stableKey(g.kind, this.groupKeyText(g), index))
           }
-        }, (g: InlineGroup, index: number) => this.stableKey(g.kind, this.groupKeyText(g), index))
+          .width('100%')
+        }, (line: InlineGroup[], index: number) => this.stableKey('line', this.lineKeyText(line), index))
       }
       .width('100%')
     }

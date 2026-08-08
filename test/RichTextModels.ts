@@ -157,6 +157,13 @@ export class TableCell {
 export class RenderBlock {
   kind: string = 'text'         // 'text' | 'heading' | 'image' | 'code' | 'quote' | 'list-item' | 'table' | 'hr'
   groups: InlineGroup[] = []
+  /**
+   * 混排文本按换行符拆分的"视觉行"（每行是一组 InlineGroup）。
+   * 仅混排（多组或含 link/image）时由 RichTextBuilder 填充；纯文本单组为空数组。
+   * 组件层逐行用独立 Flex 渲染：行内全是单行内容，顶对齐不会错位，
+   * 避免"含 \n 的多行文本组"与单行链接/文本组在同一 Flex 中顶对齐错位。
+   */
+  groupLines: InlineGroup[][] = []
   children: RenderBlock[] = []  // quote / list-item 内部块
   marginTop: number = 0
   marginBottom: number = 0

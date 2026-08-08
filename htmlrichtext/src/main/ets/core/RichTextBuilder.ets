@@ -630,6 +630,12 @@ export class RichTextBuilder {
     const block: RenderBlock = new RenderBlock();
     block.kind = 'text';
     block.groups = groups;
+    // 混排（多组或含 link/image）时按 \n 拆成"视觉行"：
+    // 纯文本单组不拆分——单个 Text 原生支持 \n 与 textAlign（走组件层单 Text 分支）。
+    const isPlainSingle: boolean = groups.length === 1 && groups[0].kind === 'text';
+    if (!isPlainSingle) {
+      block.groupLines = this.splitGroupLines(groups);
+    }
     const fontSize: number = style.fontSize ?? this.config.bodyFontSize;
     block.fontSize = fontSize;
     block.lineHeight = (style.lineHeight ?? this.config.bodyLineHeight) * fontSize;
@@ -637,6 +643,97 @@ export class RichTextBuilder {
     block.marginTop = style.marginTop ?? 0;
     block.marginBottom = style.marginBottom ?? 0;
     return block;
+  }
+
+  /**
+   * 把混排 groups 按换行符 \n 拆成"视觉行"数组（通用拆分，适配任意 HTML 变体）。
+   *  - 文本组按 \n 切段（保留原 span 样式），相邻文本段自动合并成同一组；
+   *  - 链接组同样按 \n 切段，每段是独立 link 组（保留 href，仍可点击），
+   *    跨行链接各段各自成行（如 <a>链<br>接</a> 拆成两行、两段都可点）；
+   *  - 图片组整体进入当前行（保留图片属性）；
+   *  - 空行（连续 \n）用"空格文本组"占位，保证行高不塌陷。
+   */
+  private splitGroupLines(groups: InlineGroup[]): InlineGroup[][] {
+    const lines: InlineGroup[][] = [];
+    let curLine: InlineGroup[] = [];
+    let curGroup: InlineGroup | null = null;   // 正在累积的行内组（text 或 link）
+    const flushGroup = (): void => {
+      if (curGroup !== null && curGroup.spans.length > 0) {
+        curLine.push(curGroup);
+      }
+      curGroup = null;
+    };
+    const endLine = (): void => {
+      flushGroup();
+      if (curLine.length === 0) {
+        // 空行占位：单个空格文本，行高不塌陷
+        const g: InlineGroup = new InlineGroup();
+        g.kind = 'text';
+        const sp: RichSpan = new RichSpan();
+        sp.text = ' ';
+        g.spans = [sp];
+        curLine.push(g);
+      }
+      lines.push(curLine);
+      curLine = [];
+    };
+    const pushSpan = (kind: string, href: string, sp: RichSpan, text: string): void => {
+      if (curGroup === null || curGroup.kind !== kind || (kind === 'link' && curGroup.href !== href)) {
+        flushGroup();
+        curGroup = new InlineGroup();
+        curGroup.kind = kind;
+        if (kind === 'link') {
+          curGroup.href = href;
+        }
+      }
+      const seg: RichSpan = this.cloneSpan(sp);
+      seg.text = text;
+      curGroup.spans.push(seg);
+    };
+    for (const group of groups) {
+      if (group.kind === 'text' || group.kind === 'link') {
+        // 文本/链接组：spans 按 \n 切段，遇换行结束当前行
+        for (const sp of group.spans) {
+          const parts: string[] = sp.text.split('\n');
+          for (let i = 0; i < parts.length; i++) {
+            if (i > 0) {
+              flushGroup();
+              endLine();
+            }
+            if (parts[i].length > 0) {
+              pushSpan(group.kind, group.href, sp, parts[i]);
+            }
+          }
+        }
+        flushGroup();
+      } else {
+        // image 组：整体进入当前行（保留图片属性）
+        flushGroup();
+        curLine.push(group);
+      }
+    }
+    flushGroup();
+    if (curLine.length > 0) {
+      lines.push(curLine);
+    }
+    return lines;
+  }
+
+  /** 复制 RichSpan（按 \n 切段时保留原 span 的全部样式） */
+  private cloneSpan(sp: RichSpan): RichSpan {
+    const c: RichSpan = new RichSpan();
+    c.text = sp.text;
+    c.fontSize = sp.fontSize;
+    c.color = sp.color;
+    c.fontWeight = sp.fontWeight;
+    c.fontStyle = sp.fontStyle;
+    c.decoration = sp.decoration;
+    c.decorationColor = sp.decorationColor;
+    c.backgroundColor = sp.backgroundColor;
+    c.fontFamily = sp.fontFamily;
+    c.baselineOffset = sp.baselineOffset;
+    c.letterSpacing = sp.letterSpacing;
+    return c;
   }
 
   // ================= 样式计算 =================

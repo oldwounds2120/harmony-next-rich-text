@@ -274,6 +274,45 @@ console.log('\n[15] 复杂文档整体渲染');
   assert(kinds === 'heading,text,quote,list-item,list-item,code,table', '块类型顺序正确: ' + kinds);
 }
 
+console.log('\n[16] 混排链接换行拆分（视觉行 groupLines）');
+{
+  // 主问题场景：<br> 把文本组拆成两行，链接与后续文本应与第二行顶对齐
+  const blocks = build('<p>安装Vagrant<br>官网：https://www.<a href="/v">vagrant</a>up.com/</p>');
+  assert(blocks.length === 1 && blocks[0].kind === 'text', '生成一个文本块');
+  const lines = blocks[0].groupLines;
+  assert(lines.length === 2, '按 \\n 拆成 2 个视觉行: ' + String(lines.length));
+  assert(lines[0].length === 1 && lines[0][0].kind === 'text'
+    && lines[0][0].spans[0].text === '安装Vagrant', '行1 为文本组"安装Vagrant"');
+  assert(lines[1].length === 3, '行2 含 3 个组（文本/链接/文本）: ' + String(lines[1].length));
+  assert(lines[1][0].kind === 'text' && lines[1][0].spans[0].text === '官网：https://www.', '行2 组1 为文本');
+  assert(lines[1][1].kind === 'link' && lines[1][1].href === '/v'
+    && lines[1][1].spans[0].text === 'vagrant', '行2 组2 为链接且保留 href');
+  assert(lines[1][2].kind === 'text' && lines[1][2].spans[0].text === 'up.com/', '行2 组3 为文本');
+  assert(textOf(blocks) === '安装Vagrant\n官网：https://www.vagrantup.com/', '拆分后原始 groups 文本不丢失');
+}
+
+console.log('\n[16b] 视觉行拆分：纯文本/链接内嵌 br/空行');
+{
+  // 纯文本单组不拆分：单个 Text 原生支持 \n 与 textAlign
+  const plain = build('<p>hello<br>world</p>');
+  assert(plain[0].groupLines.length === 0, '纯文本单组不拆分（groupLines 为空）');
+
+  // 链接内嵌 <br>：拆成两段都保留 href（每段仍可点击）
+  const linkBr = build('<p>a<a href="/x">链<br>接</a>b</p>');
+  const lbLines = linkBr[0].groupLines;
+  assert(lbLines.length === 2, '链接内嵌 br 拆成 2 行: ' + String(lbLines.length));
+  const link1 = lbLines[0].find((g: InlineGroup) => g.kind === 'link');
+  const link2 = lbLines[1].find((g: InlineGroup) => g.kind === 'link');
+  assert(link1 !== undefined && link1.href === '/x' && link1.spans[0].text === '链', '链接第一段保留 href');
+  assert(link2 !== undefined && link2.href === '/x' && link2.spans[0].text === '接', '链接第二段保留 href');
+
+  // 连续 <br> 空行：以空格文本组占位，行高不塌陷
+  const emptyLine = build('<p>a<br><br><a href="/y">b</a></p>');
+  const elLines = emptyLine[0].groupLines;
+  assert(elLines.length === 3, '连续空行生成 3 行（含占位行）: ' + String(elLines.length));
+  assert(elLines[1].length === 1 && elLines[1][0].spans[0].text === ' ', '空行以空格文本占位');
+}
+
 console.log(`\n========================================`);
 console.log(`结果：通过 ${passed}，失败 ${failed}`);
 console.log(`========================================\n`);
