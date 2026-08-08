@@ -246,6 +246,12 @@ console.log('\n[13] 代码高亮器');
   assert(joined.includes('const'), '内容不丢失');
 }
 
+console.log('\n[13b] 链接打开浏览器开关默认值');
+{
+  const cfg = new RichTextConfig();
+  assert(cfg.linkOpenBrowser === true, 'linkOpenBrowser 默认 true（默认用系统浏览器打开）');
+}
+
 console.log('\n[14] baseUrl 拼接');
 {
   const root = HtmlParser.parse('<p><img src="img/a.png"></p>');

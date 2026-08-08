@@ -21,6 +21,13 @@ export class RichTextConfig {
   // ===== 链接 =====
   linkColor: string = '#1E6FFF'
   linkUnderline: boolean = true
+  /**
+   * 链接点击默认行为：**默认用系统浏览器打开**（true）。
+   * 传了 onLinkClick 时始终以回调为准（回调全权处理，组件不跳转），
+   * 想自定义行为的用户传回调即可，不受此开关影响；
+   * 不想跳浏览器也不传回调的用户，将此开关置 false 后点击无反应。
+   */
+  linkOpenBrowser: boolean = true
 
   // ===== 代码 =====
   codeFontFamily: string = 'HarmonyOS Sans Mono'

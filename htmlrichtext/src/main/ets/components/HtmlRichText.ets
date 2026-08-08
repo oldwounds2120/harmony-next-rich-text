@@ -20,6 +20,7 @@
  *  - 所有样式集中在 RichTextConfig，可整体定制
  */
 import { LengthMetrics, display } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 // 注意：onAreaChange 回调的 Area 类型为全局声明类型，无需（也不能）从 @kit.ArkUI 导入
 import {
   RenderBlock, InlineGroup, RichSpan, TableCell, AlignStyle, DecorationStyle, FontStyleType
@@ -145,6 +146,23 @@ export struct HtmlRichText {
     if (this.config.enableImagePreview && this.images.length > 0) {
       this.previewIndex = index;
       this.openPreview();
+    }
+  }
+
+  /**
+   * 用系统浏览器打开链接（linkOpenBrowser 开启且未提供 onLinkClick 时的默认行为）。
+   * 只放行 http/https 协议（逻辑层 resolveUrl 已过滤伪协议，这里再兜底防御），
+   * 打开失败静默忽略，避免无效链接导致异常。
+   */
+  private openLinkInBrowser(url: string): void {
+    if (!/^https?:\/\//i.test(url)) {
+      return;
+    }
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      context.openLink(url);
+    } catch (e) {
+      // 打开失败（如权限限制/无效链接）静默忽略，不影响页面
     }
   }
 
@@ -322,7 +340,11 @@ export struct HtmlRichText {
             .textAlign(TextAlign.Start)
             .onClick(() => {
               if (this.onLinkClick !== undefined) {
+                // 使用方提供回调：全权交由回调处理，组件不跳转
                 this.onLinkClick(g.href);
+              } else if (this.config.linkOpenBrowser) {
+                // 未提供回调且开关开启：默认用系统浏览器打开
+                this.openLinkInBrowser(g.href);
               }
             })
           } else if (g.kind === 'image') {
