@@ -49,7 +49,7 @@ html-rich-text/
 ├── demo/
 │   └── RichTextDemoPage.ets     # 完整示例页面
 └── test/
-    └── run.ts                   # 逻辑层单测（53 条断言）
+    └── run.ts                   # 逻辑层单测（91 条断言）
 ```
 
 > 💡 **使用者只需要关注** `htmlrichtext/` 目录内的 `README.md`（安装、示例、API）
@@ -145,9 +145,13 @@ struct ArticlePage {
 | `html` | `string` | 是 | 富文本 HTML 字符串；变化时自动重新解析渲染 |
 | `config` | `RichTextConfig` | 否 | 样式配置，默认内置一套 |
 | `baseUrl` | `string` | 否 | 相对图片/链接地址的前缀，`/` 开头或绝对地址不拼接 |
-| `onLinkClick` | `(url: string) => void` | 否 | `<a>` 链接点击回调 |
+| `onLinkClick` | `(url: string) => void` | 否 | `<a>` 链接点击回调；**提供后全权处理链接点击，组件不跳转** |
 | `onImageClick` | `(index, url) => void` | 否 | 图片点击回调（全组件图片按出现顺序编号） |
 | `onImageLoadError` | `(url: string) => void` | 否 | 图片加载失败回调 |
+
+链接点击优先级：**传了 `onLinkClick` 以回调为准**（组件不跳转，可在回调里做自定义
+行为，如弹窗/复制/站内跳转）；未传回调时，组件**默认用系统浏览器打开**链接
+（`config.linkOpenBrowser = false` 可关闭该默认行为，点击无反应）。
 
 内置能力：点击图片默认打开全屏预览（Swiper 左右滑动 + 双击缩放），可通过
 `config.enableImagePreview = false` 关闭。
@@ -161,6 +165,8 @@ config.bodyLineHeight = 1.8;         // 行高（倍数）
 config.paragraphSpacing = 14;        // 段间距
 config.headingSizes = [22, 20, 18, 17, 16, 15]; // h1~h6 字号
 config.linkColor = '#1E6FFF';        // 链接颜色
+config.linkUnderline = true;         // 链接下划线
+config.linkOpenBrowser = false;      // 未传 onLinkClick 时点击链接默认打开系统浏览器（默认 true，置 false 关闭）
 config.codeBlockBackground = '#F6F8FA'; // 代码块背景
 config.enableCodeHighlight = true;   // 代码高亮开关
 config.imageRadius = 8;              // 图片圆角
@@ -201,11 +207,12 @@ A：`config.enableCodeHighlight = false` 关闭；或修改 `SimpleCodeHighlight
 A：`img` 未指定 `width/height` 时默认占满容器宽度并等比缩放；指定了属性则按指定尺寸
 （超出容器宽度会自动约束在 100% 内）。
 
-**Q：希望链接用系统浏览器打开？**
-```ts
-const context = getContext(this) as common.UIAbilityContext;
-context.openLink(url); // 需要 import { common } from '@kit.AbilityKit'
-```
+**Q：链接点击行为怎么控制？**
+A：组件**默认用系统浏览器打开** `<a>` 链接（无需写任何回调）：
+- 想自定义行为（弹窗/复制/站内跳转）→ 传 `onLinkClick` 回调，组件不再跳转，行为全由回调决定；
+- 想完全禁用链接跳转 → `config.linkOpenBrowser = false`，点击无反应；
+- 想自己用回调打开浏览器 → 在回调里写 `context.openLink(url)` 即可
+  （需要 `import { common } from '@kit.AbilityKit'`）。
 
 **Q：性能怎么样？**
 A：解析和渲染模型构建只在 `html` 变化时执行一次（缓存为渲染块数组），渲染用 ForEach

@@ -2,9 +2,15 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
-## [1.0.2] - 2026-08-07
+## [1.0.2] - 2026-08-08
 
-### 修复（表格）
+### 新增
+- **链接打开浏览器开关**：新增 `config.linkOpenBrowser`（**默认 true**）。未传
+  `onLinkClick` 回调时，点击链接默认用系统浏览器打开；传了回调始终以回调为准
+  （组件不跳转），便于使用方在回调里做自定义行为（弹窗/复制/站内跳转等）；
+  置 false 可关闭默认跳转
+
+### 修复
 - **表格不渲染（严重）**：后端常见的 `<table><tbody><tr>…</tr></tbody></table>`
   结构以及 `<div class="entry-content">` 包裹正文时，表格整体不渲染、内容被压成纯文本。
   根因与修复：
@@ -23,6 +29,15 @@
 - **新增 5 个表格样式配置项**：`tableHeaderTextColor` / `tableHeaderTextWeight` /
   `tableEvenRowBackground` / `tableOddRowBackground`（斑马纹）/ `tableMinRowHeight`
   （最小行高兜底，0 = 不设下限）
+- **引用块高度异常**：左侧竖线改用 `Row` 边框实现。原 `Column().height('100%')` 在
+  父容器自适应 + 外层 Scroll 无界高度约束下被解析成最大可用高度，把引用块撑到异常大
+  （实测 669vp，与内容多少无关），现高度完全由内容驱动
+- **引用块背景内空白**：内部首块 `marginTop`、末块 `marginBottom` 清零，段间距不再
+  落在背景内部造成底部多余空白（中间块保留间距作段落分隔）
+- **混排链接换行顶对齐错位**：文本 + `<br>` + 链接/图片混排时按"视觉行"拆分渲染
+  （构建层按 `\n` 拆行并填充 `RenderBlock.groupLines`，组件层逐行独立 Flex），修复
+  含换行文本组与单行链接/文本组在同一 Flex 顶对齐导致链接被顶到上一行的错位；
+  链接内嵌 `<br>` 拆段后每段保留 `href` 仍可点击
 
 ## [1.0.1] - 2026-08-05
 

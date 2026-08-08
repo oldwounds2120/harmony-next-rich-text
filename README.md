@@ -49,7 +49,7 @@ html-rich-text/
 ├── demo/
 │   └── RichTextDemoPage.ets     # 完整示例页面
 └── test/
-    └── run.ts                   # 逻辑层单测（53 条断言）
+    └── run.ts                   # 逻辑层单测（91 条断言）
 ```
 
 > 💡 **使用者只需要关注** `htmlrichtext/` 目录内的 `README.md`（安装、示例、API）
