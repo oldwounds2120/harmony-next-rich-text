@@ -310,6 +310,12 @@ export class RichTextBuilder {
     const block: RenderBlock = new RenderBlock();
     block.kind = 'quote';
     block.children = inner;
+    // 首块顶部、末块底部贴齐引用背景，避免段间距落在背景内部造成多余空白；
+    // 中间块保留间距作为块间分隔（与 walkListItem 的边距压缩行为一致）
+    if (inner.length > 0) {
+      inner[0].marginTop = 0;
+      inner[inner.length - 1].marginBottom = 0;
+    }
     block.marginTop = this.config.quoteMarginTop;
     block.marginBottom = this.config.quoteMarginBottom;
     out.push(block);

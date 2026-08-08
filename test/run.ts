@@ -147,6 +147,25 @@ console.log('\n[10] 引用块与代码块');
   assert(tokens[0].some((s: RichSpan) => s.color === '#6A737D'), '注释被高亮为注释色');
 }
 
+console.log('\n[10b] 引用块：内部段间距压缩');
+{
+  // pushQuote 压缩内部子块边距：首块 marginTop、末块 marginBottom 清零，
+  // 避免段间距落在引用背景内部造成多余空白；中间块保留间距作分隔
+  const single = build('<blockquote><p>引用文字</p></blockquote>');
+  assert(single[0].kind === 'quote', '引用块生成');
+  assert(single[0].children.length === 1, '单段引用只有一个内部块');
+  assert(single[0].children[0].marginTop === 0, '首块 marginTop 清零');
+  assert(single[0].children[0].marginBottom === 0, '单段时末块 marginBottom 清零');
+  assert(single[0].marginTop === 8 && single[0].marginBottom === 8, '引用块自身边距保留(quoteMarginTop/Bottom=8)');
+
+  const multi = build('<blockquote><p>第一段</p><p>第二段</p><p>第三段</p></blockquote>');
+  assert(multi[0].children.length === 3, '多段引用生成 3 个内部块');
+  assert(multi[0].children[0].marginTop === 0, '多段时首块 marginTop 清零');
+  assert(multi[0].children[0].marginBottom === 12, '中间块保留段间距(paragraphSpacing=12): ' + String(multi[0].children[0].marginBottom));
+  assert(multi[0].children[1].marginBottom === 12, '中间块间保留分隔: ' + String(multi[0].children[1].marginBottom));
+  assert(multi[0].children[2].marginBottom === 0, '末块 marginBottom 清零');
+}
+
 console.log('\n[11] 表格');
 {
   const blocks = build('<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>');

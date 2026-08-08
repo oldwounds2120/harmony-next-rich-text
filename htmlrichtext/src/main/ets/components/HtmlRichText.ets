@@ -518,11 +518,6 @@ export struct HtmlRichText {
   @Builder
   private QuoteBlock(block: RenderBlock) {
     Row() {
-      Column()
-        .width(3)
-        .height('100%')
-        .backgroundColor(this.config.quoteBorderColor)
-        .borderRadius(2)
       Column() {
         ForEach(block.children, (child: RenderBlock) => {
           this.BlockBuilder(child)
@@ -535,7 +530,13 @@ export struct HtmlRichText {
     .backgroundColor(this.config.quoteBackground)
     .borderRadius(6)
     .padding(this.config.quotePadding)
-    .alignItems(VerticalAlign.Top)
+    // 左侧竖线改用边框实现：贴满实际高度、不参与高度计算。
+    // 原 height('100%') 竖线在父容器自适应 + 外层 Scroll 无界高度约束下，
+    // 会被解析成最大可用高度，把引用块撑到异常大（实测 669vp）
+    .border({
+      width: { left: 3 },
+      color: { left: this.config.quoteBorderColor }
+    })
   }
 
   // ---------- 列表项 ----------
